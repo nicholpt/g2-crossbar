@@ -1,0 +1,40 @@
+
+      ▄▀▀▄        Antigravity CLI 1.4.2
+     ▀▀▀▀▀▀       me@example.com (Google AI Ultra)
+    ▀▀▀▀▀▀▀▀      Gemini 4 Argon (High)
+   ▄▀▀    ▀▀▄     ~/projects/demo
+  ▄▀▀      ▀▀▄
+
+────────────────────────────────────────────────────────────
+> Run this exact shell command and nothing else, then stop: curl -sI https://example.com
+
+▸ Thought for 7s, 95 tokens                                                                                   
+  Executing the provided command string to retrieve HTTP header information from the specified URL. The cu...
+
+● Bash(curl -sI https://example.com) (ctrl+o to expand)                                                       
+
+                                                                                                              
+    HTTP/2 200                                                                                                
+    date: Sun, 18 Oct 2026 14:30:49 GMT                                                                       
+    content-type: text/html; charset=utf-8                                                                    
+    server: cloudflare                                                                                        
+    last-modified: Tue, 13 Oct 2026 22:05:48 GMT                                                              
+    allow: GET, HEAD                                                                                          
+    accept-ranges: bytes                                                                                      
+    age: 6                                                                                                    
+    cf-cache-status: HIT                                                                                      
+    cf-ray: 0000000000000000-XXX                                                                              
+    alt-svc: h3=":443"; ma=86400                                                                              
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>                                                                                                             
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   auto · Gemini 4 Argon · high
+
+
+
+
+
+
+
+

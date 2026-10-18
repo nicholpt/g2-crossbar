@@ -1,0 +1,40 @@
+⏺ Terminal multiplexers like tmux and GNU Screen let you run many terminal sessions inside one window and keep
+  them alive on their own, separate from the window that shows them. A few practical benefits follow from     
+  that.
+                                                                                                              
+  Sessions that survive disconnects. This is the main reason people use them. If you SSH into a remote server 
+  and start a long job, such as a database migration, a big compile or a data-processing script, a dropped
+  connection normally kills it. Inside a multiplexer, the session keeps running on the server after the       
+  connection drops. You reconnect, reattach, and find everything where you left it, including the scrollback  
+  and running processes.                                                                                     
+                                                                                                              
+  Detach and reattach on purpose. You can also detach deliberately. Start work on your office machine, detach,
+  go home, SSH in and pick up the same session. Your editor, shell history and running tasks all stay intact.
+                                                                                                         
+  Several panes and windows in one terminal. Multiplexers split the screen into panes and group them into     
+  windows, like tabs. You might keep an editor in one pane, a test runner in another and live logs in a third,
+  all visible together. This works the same way over SSH, where you can't just open more GUI windows on the   
+  remote machine.                                                                                             
+                                                                                                              
+  Named sessions per project. You can keep one named session per project, each with its own layout. Switching 
+  projects means switching sessions, without rebuilding your workspace every time.                         
+                                                                                                              
+  Working with others. Two people can attach to the same session and see the same screen live. That's useful 
+  for pair programming, debugging together or walking someone through a fix.                                  
+                                                                                                              
+  Copy mode and synchronized input. Copy mode lets you scroll back, search and copy text with only the       
+  keyboard. Synchronized panes send the same keystrokes to several shells at once, which helps when you run   
+  identical commands on many servers.                                       
+                                                                                                            
+  Scripting and setup. A config file holds your keybindings, status bar and plugins. Scripts can rebuild   
+  complex layouts in seconds, and plugins like tmux-resurrect can restore sessions after a reboot.         
+                                                                                                             
+  In short, multiplexers make terminal work more durable and easier to organize, and they help most on remote 
+  machines.                                                                                                   
+
+✻ Sautéed for 11s · done 7:35 AM                                                                             
+                                                                                                41622 tokens  
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯                                                                           
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏸ manual mode on · ? for shortcuts               

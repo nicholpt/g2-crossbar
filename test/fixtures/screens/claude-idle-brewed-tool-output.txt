@@ -1,0 +1,40 @@
+
+
+❯ Run this exact shell command and nothing else, then stop: curl -sI https://example.com                      
+
+⏺ Bash(curl -sI https://example.com)
+  ⎿  HTTP/2 200                                                         
+     date: Sun, 18 Oct 2026 14:30:40 GMT
+     content-type: text/html; charset=utf-8                                                        
+     server: cloudflare                                                                               
+     last-modified: Tue, 13 Oct 2026 22:05:48 GMT                                                    
+     allow: GET, HEAD                                                                       
+     accept-ranges: bytes                                                    
+     age: 7
+     cf-cache-status: HIT                                                                                     
+     cf-ray: 0000000000000000-XXX
+     alt-svc: h3=":443"; ma=86400   
+
+⏺ I ran curl -sI https://example.com and example.com answered with HTTP/2 200. Cloudflare served it from its
+  cache, and the page was last modified on Tue, 13 Oct 2026 22:05:48 GMT.
+                       
+  Full headers:                                  
+                     
+  HTTP/2 200             
+  date: Sun, 18 Oct 2026 14:30:40 GMT
+  content-type: text/html; charset=utf-8
+  server: cloudflare             
+  last-modified: Tue, 13 Oct 2026 22:05:48 GMT
+  allow: GET, HEAD
+  accept-ranges: bytes
+  age: 7
+  cf-cache-status: HIT
+  cf-ray: 0000000000000000-XXX
+  alt-svc: h3=":443"; ma=86400
+
+✻ Brewed for 5s · done 7:30 AM 
+                                                                                                40140 tokens
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯                                                                                       
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on (shift+tab to cycle)                                  

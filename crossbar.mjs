@@ -55,7 +55,8 @@ const bytes = (n) => (n > 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n > 1e6 ? `${(n /
 // Approval prompts (Claude Code / Codex / generic y/n), and "working" markers
 // so a working → idle transition reads as "finished".
 const APPROVAL = /do you want to (proceed|make this edit|create|run|allow)|would you like to (run|make|apply|allow)|allow (this|command|once)|yes, proceed|\(y\/n\)|\[y\/n\]|press enter to (confirm|continue)/i;
-const WORKING = /esc to interrupt|\(esc to cancel|working \(|thinking…|thinking\.\.\./i;
+// (agy shows only a braille spinner while it edits: "⣟  Editing files...")
+const WORKING = /esc to interrupt|\(esc to cancel|working \(|thinking…|thinking\.\.\.|^\s*[⠁-⣿]\s+\S/im;
 // A multiple-choice prompt at the bottom of a pane (Claude Code, Codex, Gemini /
 // agy, Kimi…): a cursor line (❯ › > ▶ ➤, or ● on numbered lists) plus sibling
 // options whose text starts in the same column. Box borders are blanked first
@@ -63,6 +64,7 @@ const WORKING = /esc to interrupt|\(esc to cancel|working \(|thinking…|thinkin
 // { question, options: [{ label }], cursor, sig } or null.
 const POINTER = /^(\s*)(❯|›|>|▶|➤|→|●)\s+(\S.*)$/;
 const NUMBERED = /^\(?\d{1,2}[.)]\s+/;
+const HINT = /navigate|enter to|enter (select|confirm)|esc to|to (select|confirm|cancel)\b/i; // key hints under a menu, not options
 export function parseDecision(raw) {
   const lines = raw.split('\n').slice(-40).map((l) => l.replace(/^(\s*)[│┃║]/, '$1 ').replace(/\s*[│┃║]\s*$/, '').trimEnd());
   while (lines.length && !lines.at(-1).trim()) lines.pop();
@@ -72,31 +74,50 @@ export function parseDecision(raw) {
     if (!m) continue;
     const col = m[1].length + lines[c].slice(m[1].length).match(/^\S+\s+/)[0].length; // where option text starts
     const opts = [{ line: c, label: m[3] }];
-    // siblings: same text column; deeper-indented lines continue the option above
+    // siblings: same text column. A deeper-indented line under a long (wrapped)
+    // option continues it; under a short one it's a description (Claude's
+    // questions), left out.
     const numbered = NUMBERED.test(m[3]);
     const sibling = (i) => {
       const t = text(lines[i], col);
-      if (t !== null) return /^[└├│─╰╭…]/.test(t) || (numbered && !NUMBERED.test(t)) ? false : t;
-      if (lines[i].trim() && /^\s*$/.test(lines[i].slice(0, col + 1)) ) return 'cont';
+      if (t !== null) return /^[└├│─╰╭…]/.test(t) || HINT.test(t) || (numbered && !NUMBERED.test(t)) ? false : t;
+      if (lines[i].trim() && /^\s*$/.test(lines[i].slice(0, col + 1))) return i > 0 && lines[i - 1].length >= 60 ? 'cont' : 'desc';
       // hard-wrapped by the agent itself (agy wraps long options to column 0)
       if (i > 0 && lines[i - 1].length >= 60 && lines[i].trim() && !POINTER.test(lines[i]) && !/^\s*[?▸●•⏺✻─━═╭╰]/.test(lines[i])) return 'cont';
       return false;
     };
-    let cursorIdx = 0;
+    // a gap the menu continues across: blank lines between options (kimi), or a
+    // divider before a last numbered option (Claude's "5. Chat about this")
+    const gap = (i, step) => {
+      const next = lines[i + step] === undefined ? false : sibling(i + step);
+      if (typeof next !== 'string') return false;
+      return !lines[i].trim() || (numbered && /^\s*[─━═╌]{3,}\s*$/.test(lines[i]));
+    };
+    let group = 0; // blank-separated groups, for kimi's option + description pairs
     let wrapped = []; // continuation lines seen while scanning up, for the option above them
     for (let i = c - 1; i >= 0; i--) {
       const t = sibling(i);
-      if (t === false) break;
+      if (t === false) { if (gap(i, -1)) { if (!lines[i].trim()) group--; continue; } break; }
+      if (t === 'desc') continue;
       if (t === 'cont') { wrapped.unshift(lines[i].trim()); continue; }
-      opts.unshift({ line: i, label: [t, ...wrapped].join(' ') }); cursorIdx++;
+      opts.unshift({ line: i, label: [t, ...wrapped].join(' '), group });
       wrapped = [];
     }
+    opts.at(-1).group = 0;
+    group = 0;
     for (let i = c + 1; i < lines.length; i++) {
       const t = sibling(i);
-      if (t === false) break;
+      if (t === false) { if (gap(i, 1)) { if (!lines[i].trim()) group++; continue; } break; }
+      if (t === 'desc') continue;
       if (t === 'cont') { opts.at(-1).label += ` ${lines[i].trim()}`; continue; }
-      opts.push({ line: i, label: t });
+      opts.push({ line: i, label: t, group });
     }
+    // every blank-separated group is an option and its description: keep the option
+    const groups = Object.groupBy(opts, (o) => o.group);
+    if (Object.keys(groups).length > 1 && Object.values(groups).every((g) => g.length === 2)) {
+      opts.splice(0, opts.length, ...Object.values(groups).map((g) => g[0]).sort((a, b) => a.line - b.line));
+    }
+    const cursorIdx = opts.findIndex((o) => o.line === c || (o.group === 0 && opts.every((p) => p.line !== c)));
     if (opts.length < 2 || opts.length > 12) continue;
     // a live menu is the last thing on screen: below it only hints, rules and footers.
     // Agent output, a working status or an input prompt below means it's history
@@ -106,25 +127,28 @@ export function parseDecision(raw) {
     // ● is also a bullet (tool calls, list items): only trust it on numbered menus
     if (m[2] === '●' && !opts.every((o) => NUMBERED.test(o.label))) continue;
     if (!opts.some((o) => NUMBERED.test(o.label)) && opts.some((o) => lines[o.line].trim().length > 160)) continue; // prose, not a menu
+    // the question: the first sentence ending in "?" in the text block above the
+    // menu (up to a divider or an agent bullet). Taking the topmost skips the
+    // explanation under it and codex's "Reason: … with network access?".
     let question = '';
+    let nearest = '';
+    let command = ''; // what codex asks to run ("$ git push …")
     let ruled = false; // a divider straight above the "options": an input box or echoed message
-    for (let i = opts[0].line - 1; i >= Math.max(0, opts[0].line - 6); i--) {
+    for (let i = opts[0].line - 1; i >= Math.max(0, opts[0].line - 12); i--) {
       const t = lines[i].trim();
-      if (/^[─━═╭╰┌└-]{3,}/.test(t) && !question) ruled = true;
-      if (!t || /^[─━═╭╰┌└-]+/.test(t)) { if (question) break; continue; }
-      question = question ? `${t} ${question}` : t;
-      if (/\?\s*$/.test(t) || question.length > 80) break;
+      if (/^[─━═╌┄╭╰┌└-]{3,}/.test(t)) { if (!nearest) ruled = true; break; }
+      if (!t) continue;
+      if (/^[•⏺●▸❯›»>]\s/.test(t)) break;
+      if (!nearest) nearest = t;
+      if (/^\$ /.test(t)) command = t;
+      const q = t.replace(/^\?\s+/, "").match(/^.*?\?(?=\s|$)/);
+      if (q) question = q[0];
     }
-    // unnumbered lists need a real question right above them
-    if (!numbered && (ruled || !/[?:]\s*$/.test(question))) continue;
-    // a numbered menu's nearest text may be what it's about ("$ git push …", codex):
-    // put the question line a little further up in front of it
-    if (numbered && question && !/\?\s*$/.test(question)) {
-      for (let i = opts[0].line - 2; i >= Math.max(0, opts[0].line - 10); i--) {
-        const t = lines[i].trim();
-        if (/\?\s*$/.test(t) && !question.includes(t)) { question = `${t} ${question}`; break; }
-      }
-    }
+    question = question.replace(/^Question \d+\/\d+:\s*/, '');
+    if (question && command) question += ` ${command}`;
+    // unnumbered lists need a real question above them
+    if (!numbered && (ruled || !(question || /:\s*$/.test(nearest)))) continue;
+    if (!question) question = nearest;
     const options = opts.map((o) => ({ label: clean(o.label).join(' ').trim() }));
     const q = clean(question).join(' ').trim().replace(/^\?\s*/, '');
     return { question: q || 'Choose an option', options, cursor: cursorIdx, sig: JSON.stringify([q, options.map((o) => o.label)]) };
@@ -151,17 +175,35 @@ export function lastLine(screen) {
   const lines = screen.split('\n').map((l) => l.trimEnd());
   // whichever is later: a recap quoted in some other output must not win over a newer message
   const recap = lines.findLastIndex((l) => /^\s*↳ Recap:/.test(l));
-  const msg = lines.findLastIndex((l) => MESSAGE.test(l) && !TOOL.test(l.match(MESSAGE)[1]) && !WORKING.test(l));
+  const msg = lines.findLastIndex((l) => MESSAGE.test(l) && !TOOL.test(l.match(MESSAGE)[1]) && !/^[•⏺●]\s+Queued follow-up/.test(l) && !WORKING.test(l));
   if (recap >= 0 && recap > msg) return oneLine(joinPara(lines, recap).replace(/^\s*↳ Recap:\s*/, ''));
   if (msg >= 0) return oneLine(joinPara(lines, msg).replace(/^[•⏺●]\s+/, ''));
   // the input box at the bottom (between dividers) holds your own or queued text, not the agent's
   const box = lines.findIndex((l, i) => i >= lines.length - 15 && /^\s*[─━═]{10,}/.test(l));
-  const body = (box >= 0 ? lines.slice(0, box) : lines).filter((l) => !/^\s*[─━═]{3,}/.test(l) && !/^\s*[⠀-⣿]/.test(l)); // dividers, spinners
-  return clean(body.join('\n')).map((l) => l.trim().replace(/^[•●◦·*]\s+/, ''))
-    .filter((l) => l && !/^[»❯>›]/.test(l) && !/^[─━═-]{3,}/.test(l) && !/shortcuts|to queue message|Press up to edit|alt\+m|context left|tab to|^\+ (Show details|\d+ lines?)|ctrl\+o to expand|background terminal|\/ps to view|auto mode|^\d+ tokens$|^Tip:/i.test(l) && !FOOTER.test(l)
-      && !WORKING.test(l) && !/^(Working|Thinking|Compacting)\b.*\(\d/.test(l) && !/^(Worked|Cooked|Baked|Brewed|Churned|Crunched) for \d/.test(l) // spinner/status lines
-      && !/· ~\/|^(GPT|gpt|o\d|Gemini|Claude|Opus|Sonnet|Haiku|Fable|Kimi)[-\s].*·/.test(l)) // model/status footers
-    .at(-1)?.slice(0, 140) ?? '';
+  const top = box >= 0 ? lines.slice(0, box) : lines;
+  // the last line that's something the agent said: not chrome, and not inside a
+  // tool call's raw output (agy's "● Bash(curl …)" then output indented 4, or
+  // Claude's "⎿"; codex's one-line "└ Read x.py" summaries stay)
+  const said = [];
+  let tool = -1; // indent of the tool call whose output we're in
+  top.forEach((raw, i) => {
+    const indent = raw.match(/^\s*/)[0].length;
+    if (tool >= 0 && (!raw.trim() || indent >= tool + 4 || /^\s*⎿/.test(raw))) return;
+    tool = -1;
+    const bullet = raw.trim().match(MESSAGE);
+    if (bullet && TOOL.test(bullet[1])) { tool = indent; return; }
+    const l = clean(raw).join(' ').trim().replace(/^[•●◦·*]\s+/, '');
+    if (l && !/^\s*[─━═]{3,}/.test(raw) && !/^\s*[⠀-⣿]/.test(raw) && !/^[»❯>›]/.test(l) && !/^[─━═-]{3,}/.test(l)
+      && !/shortcuts|to queue message|Press up to edit|alt\+m|context left|tab to|Queued follow-up|to answer$|^\+ (Show details|\d+ lines?)|ctrl\+o to expand|background terminal|\/ps to view|auto mode|\/artifact to review|^\d+ tokens$|^Tip:/i.test(l) && !FOOTER.test(l)
+      && !WORKING.test(l) && !/^(Working|Thinking|Compacting)\b.*\(\d/.test(l) && !/^\w+ for \d+[smh]/.test(l) // spinner/status lines ("Brewed for 5s · done")
+      && !/· ~\/|^(GPT|gpt|o\d|Gemini|Claude|Opus|Sonnet|Haiku|Fable|Kimi)[-\s].*·/.test(l)) said.push({ i, indent, l, bullet: /^\s*[•●◦·*]\s/.test(raw) });
+  });
+  if (!said.length) return '';
+  // with the rest of its paragraph: earlier wrapped lines at the same indent, back to a bullet
+  let k = said.length - 1;
+  while (k > 0 && !said[k].bullet && said[k - 1].i === said[k].i - 1 && top[said[k - 1].i].length >= 60
+    && (said[k - 1].indent === said[k].indent || (said[k - 1].bullet && said[k - 1].indent === said[k].indent - 2))) k--;
+  return oneLine(said.slice(k).map((s) => s.l).join(' '));
 }
 
 export function paneState(raw) {
@@ -169,6 +211,8 @@ export function paneState(raw) {
   const tail = lines.join('\n');
   const decision = parseDecision(raw);
   if (decision) return { state: 'approval', detail: decision.question, decision };
+  // codex parks its questions behind the input box until you open them
+  if (/\d+ questions?\s*\n.*⇧← to answer/.test(tail)) return { state: 'approval', detail: 'Has a question for you', key: 'open' };
   if (APPROVAL.test(tail)) {
     const q = [...lines].reverse().find((l) => /\?\s*$/.test(l.trim())) || lines.find((l) => APPROVAL.test(l)) || '';
     // Codex marks its yes option "(y)"; Claude Code's menu takes "1"; else y + Enter
@@ -482,8 +526,12 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
     for (const a of list) {
       const viewIt = { id: 'view', label: 'View', run: async () => ({ view: `pane:${a.pane}` }) };
       add(needs, {
-        id: `alert:${a.pane}`, label: `${a.agent} ${a.decision ? 'is asking' : a.kind === 'approval' ? 'needs approval' : 'finished'}`, sub: a.text || '', live: a.kind === 'approval', attention: a.kind === 'approval', meta: ago(a.at / 1000),
-        actions: a.decision ? [viewIt, ...optionActions(a.pane, a.decision), escIt(a.pane)] : a.kind === 'approval' ? [
+        id: `alert:${a.pane}`, label: `${a.agent} ${a.decision || a.key === 'open' ? 'is asking' : a.kind === 'approval' ? 'needs approval' : 'finished'}`, sub: a.text || '', live: a.kind === 'approval', attention: a.kind === 'approval', meta: ago(a.at / 1000),
+        actions: a.decision ? [viewIt, ...optionActions(a.pane, a.decision), escIt(a.pane)] : a.key === 'open' ? [
+          viewIt,
+          // shows codex's question as a menu, which then gets its own options here
+          { id: 'open', label: 'Show Question', run: async () => { await run(`${tmux} send-keys -t ${sq(a.pane)} S-Left`); return { message: 'opened' }; } },
+        ] : a.kind === 'approval' ? [
           viewIt,
           { id: 'approve', label: 'Approve', confirm: true, run: async () => {
             const k = a.key === '1' ? '1' : 'y';

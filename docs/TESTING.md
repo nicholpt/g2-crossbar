@@ -44,7 +44,15 @@ prompt detection is driven by captured screens.
    working.
 
 Name fixtures after the harness (`claude-`, `codex-`, `gemini-`, `agy-`, `kimi-`).
-Harnesses with no fixtures yet: **kimi**. Captures from it are especially welcome.
+The fixtures cover trust-folder prompts, command and file-edit approvals, multiple-choice
+questions (with option descriptions, wrapped options and a cursor part-way down), working
+and idle screens. **kimi** only has its trust prompt so far: captures of its approvals and
+questions are especially welcome.
+
+To make an agent show a prompt without touching your own sessions, run it in a scratch
+folder on a separate tmux server (`tmux -L scratch new -s demo -c /tmp/demo claude`),
+ask it to run a command or ask you a question, and capture with
+`CROSSBAR_TMUX="tmux -L scratch" npm run capture -- demo <name>`.
 
 ## Manual checks before a release
 

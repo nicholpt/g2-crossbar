@@ -1,0 +1,40 @@
+
+ ▐▛███▛█   Claude Code v2.1.302
+▝▜██████▀  Opus 5.5 · Claude Max
+ ▝▝   ▝▝   ~/projects/demo
+
+  Get to finished work sooner with Opus 5.5. Switch anytime with /model.
+
+❯ Run this exact shell command and nothing else, then stop: curl -sI https://example.com                      
+
+⏺ Bash(curl -sI https://example.com)
+  ⎿  Interrupted · What should Claude do instead?
+
+✻ Cooked for 6s · done 7:32 AM
+                                                                                  
+❯ Before doing anything else, use your ask-the-user question tool to ask me one multiple-choice question:     
+  which color should the new logo be? Offer exactly these options: Red, Green, Blue. Then wait for my answer. 
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Logo color 
+                               
+Which color should the new logo be?
+                        
+  1. Red 
+     Make the new logo red.               
+❯ 2. Green                                                                  
+     Make the new logo green.
+  3. Blue
+     Make the new logo blue. 
+  4. Type something.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel
+
+
+
+                                                                                                            
+
+
+
+                                                   

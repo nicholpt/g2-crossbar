@@ -1,0 +1,40 @@
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Trust this folder?
+  ↑↓ navigate · Enter select · Esc exit
+ 
+  /Users/me/projects/demo
+ 
+  Kimi Code loads project-level MCP servers (.mcp.json, .kimi-code/mcp.json) only in trusted folders. They
+  run as local processes on your machine.
+ 
+   ❯ Trust this folder
+     Enable project MCP servers. Remembered for this folder.
+ 
+     Don't trust
+     Exit Kimi Code. Asked again next launch.
+ 
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

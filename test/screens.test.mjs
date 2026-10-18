@@ -1,5 +1,5 @@
 // Prompt detection and "what the agent said" against real-layout screens from
-// each harness (claude, codex, gemini, agy). Each fixture is a captured screen
+// each harness (claude, codex, gemini, agy, kimi). Each fixture is a captured screen
 // with private content replaced; screens.json holds the reviewed expectations.
 // To add a case: save the screen to fixtures/screens/<harness>-<case>.txt,
 // add its entry to screens.json by hand, and run npm test.
@@ -24,7 +24,9 @@ for (const name of screens) {
     const d = parseDecision(raw);
     assert.deepEqual(d && { question: d.question, options: d.options.map((o) => o.label), cursor: d.cursor }, want.decision, 'decision');
     assert.equal(paneState(raw).state, want.state, 'state');
-    assert.equal(lastLine(raw), want.lastLine, 'lastLine');
+    if ('key' in want) assert.equal(paneState(raw).key, want.key, 'key');
+    // what the agent said; not checked under a menu, where it isn't shown
+    if ('lastLine' in want) assert.equal(lastLine(raw), want.lastLine, 'lastLine');
   });
 }
 

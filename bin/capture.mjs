@@ -10,16 +10,17 @@ import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseDecision, paneState, lastLine } from '../crossbar.mjs';
 
-const TMUX = process.env.CROSSBAR_TMUX || ['/opt/homebrew/bin/tmux', '/usr/local/bin/tmux'].find((p) => existsSync(p)) || 'tmux';
+// CROSSBAR_TMUX may carry arguments ("tmux -L scratch")
+const [TMUX, ...ARGS] = (process.env.CROSSBAR_TMUX || ['/opt/homebrew/bin/tmux', '/usr/local/bin/tmux'].find((p) => existsSync(p)) || 'tmux').split(' ');
 
 const [pane, name = `capture-${new Date().toISOString().replace(/[:.]/g, '-')}`] = process.argv.slice(2);
 if (!pane) {
   console.error('usage: npm run capture -- <pane, e.g. agents:1.0> [name]\npanes:');
-  console.error(execFileSync(TMUX, ['list-panes', '-a', '-F', '  #{session_name}:#{window_index}.#{pane_index}  #{window_name}']).toString());
+  console.error(execFileSync(TMUX, [...ARGS, 'list-panes', '-a', '-F', '  #{session_name}:#{window_index}.#{pane_index}  #{window_name}']).toString());
   process.exit(2);
 }
 // the same capture the bridge's watcher uses: visible screen, wrapped lines joined
-const raw = execFileSync(TMUX, ['capture-pane', '-p', '-J', '-t', pane]).toString().split('\n').slice(-40).join('\n');
+const raw = execFileSync(TMUX, [...ARGS, 'capture-pane', '-p', '-J', '-t', pane]).toString().split('\n').slice(-40).join('\n');
 const dir = join(import.meta.dirname, '..', '.run', 'captures');
 mkdirSync(dir, { recursive: true });
 const file = join(dir, `${name}.txt`);

@@ -1,0 +1,40 @@
+› Run this exact shell command and nothing else, then stop: curl -sI https://example.com
+                                                   
+                                                   
+• I’ll run the command exactly as provided.                                             
+                                                               
+• Failed (exit 6) curl -sI https://example.com                 
+  └ (no output)                                                
+                                                              
+✗ You canceled the request to run curl -sI https://example.com
+                                                               
+• Failed (exit 1) curl -sI https://example.com                 
+  └ (no output)                                                
+                                                                 
+■ Conversation interrupted - use /feedback if something went wrong                      
+                                                                                        
+                                                                                        
+› Before doing anything else, use your ask-the-user question tool to ask me one multiple-choice question:
+  which color should the new logo be? Offer exactly these options: Red, Green, Blue. Then wait for my answer.
+                                                                                        
+                                                                                                         
+• Which color should the new logo be?                                                                        
+                                                                                        
+  • Red                                                                
+  • Green                                                             
+  • Blue                                                            
+                                                                 
+• Working (48s • esc to interrupt)                                
+                                                              
+• Queued follow-up inputs                                         
+                                                                                                           
+                                                                                                             
+  Which color should the new logo be?                                                                       
+                                                                                                             
+  › 1. Red                                                                                                  
+    2. Green                                                                                             
+    3. Blue                                                                                                   
+    4. Other                                                                                 
+                                                    
+  enter submit   ⌃] skip   ⇧→ main prompt                                               
+                                                                                                              

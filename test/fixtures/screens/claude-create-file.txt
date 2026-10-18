@@ -1,0 +1,40 @@
+   9 The status bar in green and gray
+  10 Displays the hour of the day.
+  11 My editor lives in pane one,
+  12 My logs in two, they scroll and run.                                                              
+  13 A shell in three to build and test,
+  14 A fourth for htop and the rest.                                    
+  15 I detach and walk away,
+  16 The work persists another day.                                                                           
+  17 Reattach from any land,
+  18 The layout waits just as I planned.
+  19 With prefix and a percent sign,             
+  20 I cleave the screen along a line.
+  21 With prefix and a double quote,
+  22 I stack the panes like lines I wrote.                                        
+  23 The copy mode, a scrolling sea,                                                                          
+  24 Where vi keys set my buffers free.                                                                       
+  25 I yank a line, I paste it through,
+  26 From pane to pane the text flies true.
+  27 Synchronize and type just once,                           
+  28 Across ten hosts, a single stunt.
+  29 The config file, my dotfile pride,
+  30 With bindings stored and themes applied.
+  31 Plugins load from TPM,                                                                                   
+  32 Resurrect saves every gem.                                                                               
+  33 The sessions named for every task,
+  34 Whatever project I might ask.                                                                            
+  35 When laptops sleep and networks fail,
+  36 My tmux keeps the steady trail.
+  37 So here's to you, multiplexer dear,
+  38 Who keeps my terminals so clear.
+  39 Long live the panes, the windows wide,
+  40 With tmux always by my side.
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ Do you want to create notes.txt?
+ ❯ 1. Yes                                                                                                   
+   2. Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session     
+      (shift+tab)                                                                                             
+   3. No                 
+
+ Esc to cancel · Tab to amend                      
