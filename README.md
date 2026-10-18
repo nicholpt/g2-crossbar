@@ -12,7 +12,7 @@ account needed). Nothing goes through a cloud service, and voice is transcribed 
 with Whisper.
 
 <p align="center">
-  <img src="docs/images/answer.png" width="600" alt="Answering Claude Code's question from the glasses: Which color should the new logo be? Green, Blue, Type something">
+  <img src="docs/images/answer.gif" width="600" alt="Answering Claude Code from the glasses: Needs You shows claude is asking which color the new logo should be; picking Green sends it, and claude then finishes: the logo is green now">
 </p>
 
 **→ Setting it up: [docs/SETUP.md](docs/SETUP.md)** (about 10 minutes).
