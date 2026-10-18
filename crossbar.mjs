@@ -17,7 +17,9 @@ const PATH = 'export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sb
 const SPARK = '▁▂▃▄▅▆▇█';
 const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 
-// User settings: crossbar.json next to this file (see crossbar.example.json). Every key is optional.
+// User settings: crossbar.json next to this file (see crossbar.example.json), or
+// CROSSBAR_CONFIG. Every key is optional.
+export const CONFIG = process.env.CROSSBAR_CONFIG || join(ROOT, 'crossbar.json');
 const DEFAULTS = {
   agents: ['claude', 'codex', 'gemini', 'kimi'], // CLI commands that count as agents (tmux panes running them)
   newAgents: ['claude', 'codex'],                 // offered as "New … Here" on projects
@@ -28,7 +30,7 @@ const DEFAULTS = {
 };
 function settings() {
   let s = DEFAULTS;
-  try { s = { ...DEFAULTS, ...JSON.parse(readFileSync(join(ROOT, 'crossbar.json'), 'utf8')) }; } catch {}
+  try { s = { ...DEFAULTS, ...JSON.parse(readFileSync(CONFIG, 'utf8')) }; } catch {}
   const home = (p) => { const x = String(p).replace(/^~(?=\/|$)/, HOME); return x.startsWith('/') ? x : join(ROOT, x); };
   return { ...s, logs: s.logs.map(home), vaults: s.vaults.map(home) };
 }
@@ -115,11 +117,51 @@ export function parseDecision(raw) {
     }
     // unnumbered lists need a real question right above them
     if (!numbered && (ruled || !/[?:]\s*$/.test(question))) continue;
+    // a numbered menu's nearest text may be what it's about ("$ git push …", codex):
+    // put the question line a little further up in front of it
+    if (numbered && question && !/\?\s*$/.test(question)) {
+      for (let i = opts[0].line - 2; i >= Math.max(0, opts[0].line - 10); i--) {
+        const t = lines[i].trim();
+        if (/\?\s*$/.test(t) && !question.includes(t)) { question = `${t} ${question}`; break; }
+      }
+    }
     const options = opts.map((o) => ({ label: clean(o.label).join(' ').trim() }));
     const q = clean(question).join(' ').trim().replace(/^\?\s*/, '');
     return { question: q || 'Choose an option', options, cursor: cursorIdx, sig: JSON.stringify([q, options.map((o) => o.label)]) };
   }
   return null;
+}
+
+// What the agent last said, in one line (for "finished" alerts and agent
+// subtitles). Harness-agnostic: codex's "↳ Recap:" if there is one, else the
+// last message bullet that isn't a tool call (• codex/kimi, ⏺ claude, ● agy/
+// gemini) with its wrapped lines joined, else the last line that isn't chrome.
+const MESSAGE = /^[•⏺●]\s+(\S.*)$/;
+// tool calls and their summaries, not things the agent said
+const TOOL = /^(Ran|Explored|Edited|Read|Interacted|Updated|Searched|Listed|Called|Waited|Wrote|Added|Deleted|Created)\b|^[\w.-]+\(/;
+const joinPara = (lines, from) => {
+  const out = [lines[from]];
+  for (let i = from + 1; i < lines.length && /^\s+\S/.test(lines[i]) && !/^\s*[└⎿]/.test(lines[i]); i++) out.push(lines[i].trim());
+  return out.join(' ');
+};
+const oneLine = (text) => clean(text).join(' ').replace(/\s+/g, ' ').trim().slice(0, 140);
+// footers and hints under the input box (agy/gemini/claude/codex)
+const FOOTER = /^(esc to cancel|\? for shortcuts)\b|· (high|medium|low)$|no sandbox|^~\/\S*\s{2,}/i;
+export function lastLine(screen) {
+  const lines = screen.split('\n').map((l) => l.trimEnd());
+  // whichever is later: a recap quoted in some other output must not win over a newer message
+  const recap = lines.findLastIndex((l) => /^\s*↳ Recap:/.test(l));
+  const msg = lines.findLastIndex((l) => MESSAGE.test(l) && !TOOL.test(l.match(MESSAGE)[1]) && !WORKING.test(l));
+  if (recap >= 0 && recap > msg) return oneLine(joinPara(lines, recap).replace(/^\s*↳ Recap:\s*/, ''));
+  if (msg >= 0) return oneLine(joinPara(lines, msg).replace(/^[•⏺●]\s+/, ''));
+  // the input box at the bottom (between dividers) holds your own or queued text, not the agent's
+  const box = lines.findIndex((l, i) => i >= lines.length - 15 && /^\s*[─━═]{10,}/.test(l));
+  const body = (box >= 0 ? lines.slice(0, box) : lines).filter((l) => !/^\s*[─━═]{3,}/.test(l) && !/^\s*[⠀-⣿]/.test(l)); // dividers, spinners
+  return clean(body.join('\n')).map((l) => l.trim().replace(/^[•●◦·*]\s+/, ''))
+    .filter((l) => l && !/^[»❯>›]/.test(l) && !/^[─━═-]{3,}/.test(l) && !/shortcuts|to queue message|Press up to edit|alt\+m|context left|tab to|^\+ (Show details|\d+ lines?)|ctrl\+o to expand|background terminal|\/ps to view|auto mode|^\d+ tokens$|^Tip:/i.test(l) && !FOOTER.test(l)
+      && !WORKING.test(l) && !/^(Working|Thinking|Compacting)\b.*\(\d/.test(l) && !/^(Worked|Cooked|Baked|Brewed|Churned|Crunched) for \d/.test(l) // spinner/status lines
+      && !/· ~\/|^(GPT|gpt|o\d|Gemini|Claude|Opus|Sonnet|Haiku|Fable|Kimi)[-\s].*·/.test(l)) // model/status footers
+    .at(-1)?.slice(0, 140) ?? '';
 }
 
 export function paneState(raw) {
@@ -241,11 +283,6 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
     return { panes, fresh };
   }
   // the agent's latest real output line (skips its input box, footers, rules)
-  const lastLine = (screen) => clean(screen).map((l) => l.trim().replace(/^[•●◦·]\s+/, ''))
-    .filter((l) => l && !/^[»❯>›]/.test(l) && !/^[─━═-]{3,}/.test(l) && !/shortcuts|to queue message|Press up to edit|alt\+m|context left|tab to|^\+ (Show details|\d+ lines?)|ctrl\+o to expand|background terminal|\/ps to view/i.test(l)
-      && !WORKING.test(l) && !/^(Working|Thinking|Compacting)\b.*\(\d/.test(l) // spinner/status lines
-      && !/· ~\/|^(GPT|gpt|o\d|Gemini|Claude|Opus|Sonnet|Haiku|Fable|Kimi)[-\s].*·/.test(l)) // model/status footers
-    .at(-1)?.slice(0, 140) ?? '';
   const dur = (ms) => { const m = Math.floor((Date.now() - ms) / 60000); return m < 1 ? '' : m < 60 ? ` · ${m} min` : ` · ${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ''}`; };
   const STATE = { working: 'Working', idle: 'Idle', approval: 'Needs approval' };
   const alerts = () => [...watch.entries()].filter(([, w]) => w.alert).map(([pane, w]) => ({ pane, agent: w.agent, ...w.alert }));

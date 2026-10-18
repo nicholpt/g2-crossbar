@@ -1,0 +1,32 @@
+name: Release
+
+# Push a tag like v1.0.1 (matching "version" in app.json) to publish
+# crossbar.ehpk as a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Tag matches app.json
+        run: |
+          v=$(node -p 'require("./app.json").version')
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME but app.json says $v"; exit 1; }
+      - run: brew install tmux
+      - run: npm ci
+      - run: npm test
+      - run: npm run pack
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" crossbar.ehpk --generate-notes --title "Crossbar $GITHUB_REF_NAME"

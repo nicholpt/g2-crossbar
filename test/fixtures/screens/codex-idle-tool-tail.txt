@@ -1,0 +1,15 @@
+  └ 3f2a91c Add retry budget to the upload client
+
+• Implemented in commit 3f2a91c on feature/upload-retries.
+
+  • Retries with jittered backoff, capped at five attempts.
+  • Unit tests for the backoff schedule.
+
+  Worked for 18m 29s • 12:44 AM
+
+  1 background terminal running · /ps to view · /stop to close
+
+» Ask Codex to do anything
+
+  GPT-6.1 high · ~/projects/uploader · Main [default]
+  ← for agents · ? for shortcuts                                              ⚠ 1 warning · f2 to view

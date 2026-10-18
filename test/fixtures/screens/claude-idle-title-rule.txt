@@ -1,0 +1,14 @@
+⏺ Bash(python3 check.py | head -8)
+  ⎿  == since 2026-10-18T06:55:43: 0 messages
+     == PANE tail
+       ↳ Recap: Cache migration finished; read latency down 31% on staging.
+
+⏺ No change since the last check: the migration is done and all services are up, waiting on
+  your go-ahead for production.
+
+✻ Cooked for 20s · done 12:55 AM
+                                                                                     30329 tokens
+────────────────────────────────────────────────────────────────────── cache migration review ─
+❯ check the staging logs again
+────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on (shift+tab to cycle)

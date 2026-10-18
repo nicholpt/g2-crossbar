@@ -1,0 +1,109 @@
+{
+  "agy-answered-history": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": "Analyzing the provided text, the objective is to model the stance shifts of the cohort..."
+  },
+  "agy-idle": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": ""
+  },
+  "agy-queued-prompts": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": ""
+  },
+  "agy-wrapped-menu-cursor0": {
+    "state": "approval",
+    "decision": {
+      "question": "Which task would you like to continue with?",
+      "options": [
+        "(Recommended) Continue the simulation work from yesterday and finish the 1,000-user decision run (multi-round agent threads, persona generation, and model serving)",
+        "Continue the performance investigation and review the other agent session for ideas on the gate (speculation review, size checks, network recovery)",
+        "Resume the vector index rebuild",
+        "Something else (type your answer)"
+      ],
+      "cursor": 0
+    },
+    "lastLine": "Something else (type your answer)"
+  },
+  "agy-wrapped-menu-cursor2": {
+    "state": "approval",
+    "decision": {
+      "question": "Which task would you like to continue with?",
+      "options": [
+        "(Recommended) Continue the simulation work from yesterday and finish the 1,000-user decision run (multi-round agent threads, persona generation, and model serving)",
+        "Continue the performance investigation and review the other agent session for ideas on the gate (speculation review, size checks, network recovery)",
+        "Resume the vector index rebuild",
+        "Something else (type your answer)"
+      ],
+      "cursor": 2
+    },
+    "lastLine": "Something else (type your answer)"
+  },
+  "claude-bullet-list": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": "Wire the tests into CI"
+  },
+  "claude-idle-title-rule": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": "No change since the last check: the migration is done and all services are up, waiting on your go-ahead for production."
+  },
+  "claude-permission": {
+    "state": "approval",
+    "decision": {
+      "question": "Do you want to proceed?",
+      "options": [
+        "1. Yes",
+        "2. Yes, and don't ask again for npm test commands in /projects/app",
+        "3. No, and tell Claude what to do differently (esc)"
+      ],
+      "cursor": 0
+    },
+    "lastLine": "I'll run the test suite."
+  },
+  "codex-approval": {
+    "state": "approval",
+    "decision": {
+      "question": "Would you like to run the following command? $ git push origin release/1.4",
+      "options": [
+        "1. Yes, proceed (y)",
+        "2. Yes, and don't ask again for this command (a)",
+        "3. No, and tell Codex what to do differently (esc)"
+      ],
+      "cursor": 0
+    },
+    "lastLine": "I'll push the release branch now."
+  },
+  "codex-echoed-message": {
+    "state": "working",
+    "decision": null,
+    "lastLine": "Read control.py"
+  },
+  "codex-idle-recap": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": "Cache migration finished; read latency down 31% on staging, writes unchanged. All three services restarted and verified. Production rollout "
+  },
+  "codex-idle-tool-tail": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": "Implemented in commit 3f2a91c on feature/upload-retries."
+  },
+  "gemini-boxed-menu": {
+    "state": "approval",
+    "decision": {
+      "question": "Which approach should I take?",
+      "options": [
+        "1. Rewrite the module",
+        "2. Patch the failing function",
+        "3. Skip it for now"
+      ],
+      "cursor": 0
+    },
+    "lastLine": "3. Skip it for now"
+  }
+}

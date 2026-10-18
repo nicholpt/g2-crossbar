@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createCrossbar } from './crossbar.mjs';
 import { Segmenter, transcribe } from './voice.mjs';
+import { parseFeed } from './feed.mjs';
 import { TMUX, HOST, HOSTS, OWNER, MODE, addresses, authorize, run, serveStatic } from './lib.mjs';
 
 const VERSION = JSON.parse(readFileSync(join(import.meta.dirname, 'package.json'), 'utf8')).version;
@@ -61,7 +62,7 @@ setInterval(() => { if (wss.clients.size) crossbar.watch().catch(() => {}); }, W
 // --- top-line feed: headlines from RSS / Atom feeds (default: newest AI papers on arXiv) ----
 // Configured in crossbar.json under "feed" (or from the phone's setup screen):
 //   { "feed": { "urls": ["https://…/rss"], "minutes": 30, "max": 40 } }   "urls": [] turns it off.
-const SETTINGS = join(import.meta.dirname, 'crossbar.json');
+const SETTINGS = process.env.CROSSBAR_CONFIG || join(import.meta.dirname, 'crossbar.json');
 const FEED_DEFAULTS = {
   // the arXiv API rather than its RSS: arXiv's RSS is empty on weekends
   urls: ['https://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=40'],
@@ -71,15 +72,6 @@ const FEED_DEFAULTS = {
 const readSettings = () => { try { return JSON.parse(readFileSync(SETTINGS, 'utf8')); } catch { return {}; } };
 const feedSettings = () => ({ ...FEED_DEFAULTS, ...readSettings().feed });
 let papers = []; // { title, source } (named for the arXiv default; any feed's items)
-const unxml = (s) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '')
-  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&');
-// RSS <item> or Atom <entry>; the first <title> inside each is the headline.
-function parseFeed(xml) {
-  const source = unxml(xml.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? '').replace(/\s+/g, ' ').trim();
-  return [...xml.matchAll(/<(item|entry)[\s>]([\s\S]*?)<\/\1>/g)]
-    .map(([, , body]) => unxml(body.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? '').replace(/\s+/g, ' ').trim())
-    .filter(Boolean).map((title) => ({ title, source }));
-}
 async function fetchFeeds() {
   const { urls, max } = feedSettings();
   const lists = await Promise.all(urls.map((u) => fetch(u, { signal: AbortSignal.timeout(30_000) })

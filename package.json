@@ -4,7 +4,9 @@
   "description": "A cross-bar menu for Even Realities G2 glasses, inspired by the PSP's XrossMediaBar: watch and answer your coding agents (Claude, Codex, Gemini, Kimi) running in tmux on your Mac, plus apps, projects, music, notes and a headline ticker.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "setup": "bin/setup",
     "build": "vite build",
@@ -12,7 +14,10 @@
     "tui": "node crossbar-tui.mjs",
     "sim": "evenhub-simulator --automation-port 9898",
     "pack": "vite build --outDir dist-pack && mv dist-pack/crossbar.html dist-pack/index.html && evenhub pack app.json dist-pack -o crossbar.ehpk",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "pretest": "vite build --logLevel error",
+    "test": "node --test 'test/*.test.mjs'",
+    "capture": "node bin/capture.mjs"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.16",

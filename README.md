@@ -140,6 +140,8 @@ G2 glasses ⇄ Even app (phone: index.html + src/crossbar.ts) ──Tailscale─
 | `src/crossbar.ts`, `crossbar.html` | the app: glasses rendering, phone UI, setup screen |
 | `src/crossbar-icons.ts` | the category icons, drawn as images for the glasses |
 | `bin/setup` | one-time setup / update / `--uninstall` |
+| `feed.mjs`, `src/address.ts` | headline feed parsing; which addresses the app may connect to |
+| `bin/capture.mjs`, `test/` | screen capture for fixtures; the test suite |
 
 ### Developing
 
@@ -148,7 +150,12 @@ npm install
 npm start                     # the bridge, in the foreground
 npm run sim -- "http://$(tailscale ip -4):8787/"   # Even's simulator
 npm run typecheck
+npm test                      # unit, screen-fixture and bridge tests (Node 22.18+, tmux)
+npm run capture -- agents:1.0 # save an agent's screen when its prompt is misread
 ```
+
+See [docs/TESTING.md](docs/TESTING.md) for what the tests cover, how to turn a misread
+prompt into a fixture, and the manual checklist for real hardware.
 
 `npm run pack` builds `crossbar.ehpk` from `app.json` (store build: no address built in;
 users enter theirs on the setup screen). `bin/setup` builds a personal one instead,

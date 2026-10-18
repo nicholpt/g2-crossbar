@@ -1,0 +1,16 @@
+me@mac projects % codex --yolo
+Disconnected from this task. Any running work continues. To reconnect, run:
+  codex resume 0a1b2c3d-1111-2222-3333-444455556666
+› [Image #1]
+• Explored
+  └ Read control.py
+    + Show details
+
+• Working (3m 45s • esc to interrupt) · 1 background terminal running · /ps to view
+  └ Tip: Start a fresh idea with /new; the previous session stays in history.
+
+
+» Ask Codex to do anything
+
+  GPT-6.1 high · ~/projects · Main [default]
+  ← for agents · ? for shortcuts

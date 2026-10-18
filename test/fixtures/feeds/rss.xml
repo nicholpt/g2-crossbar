@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>Example News</title>
+  <link>https://example.com/</link>
+  <item><title>First headline</title><link>https://example.com/1</link></item>
+  <item><title><![CDATA[Second & <b>bold</b> headline]]></title></item>
+  <item><title>Tom &amp; Jerry&#39;s &quot;big&quot; day</title></item>
+  <item><description>no title here</description></item>
+</channel></rss>

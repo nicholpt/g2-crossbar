@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install tmux
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then brew install tmux; else sudo apt-get update -q && sudo apt-get install -yq tmux; fi
+          tmux -V
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Syntax-check the bridge
+        run: for f in *.mjs bin/*.mjs; do node --check "$f"; done
+      - name: Tests (unit, screen fixtures, bridge + fake agent in tmux)
+        run: npm test
+      - name: Package (validates app.json, builds crossbar.ehpk)
+        run: npm run pack
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'macos-latest'
+        with:
+          name: crossbar-ehpk
+          path: crossbar.ehpk
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck bin/setup test/bin/tmux-test

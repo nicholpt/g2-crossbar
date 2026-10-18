@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title type="text">Example Atom</title>
+  <entry><title type="html">An   entry
+    split over lines</title><id>urn:1</id></entry>
+  <entry><title>Second entry</title><id>urn:2</id></entry>
+</feed>

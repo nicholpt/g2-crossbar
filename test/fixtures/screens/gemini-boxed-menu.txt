@@ -1,0 +1,8 @@
+╭──────────────────────────────────────────────╮
+│ Which approach should I take?                │
+│                                              │
+│ ● 1. Rewrite the module                      │
+│   2. Patch the failing function              │
+│   3. Skip it for now                         │
+╰──────────────────────────────────────────────╯
+  ~/projects/app   gemini-3   no sandbox

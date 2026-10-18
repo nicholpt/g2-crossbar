@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <id>https://arxiv.org/api/abc</id>
+  <title>arXiv Query: search_query=cat:cs.AI&amp;id_list=&amp;start=0&amp;max_results=2</title>
+  <entry>
+    <id>http://arxiv.org/abs/2610.00001v1</id>
+    <title>Benchmarking Personalized Robotic
+  Manipulation</title>
+    <summary>We study ...</summary>
+    <arxiv:primary_category term="cs.RO"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2610.00002v1</id>
+    <title>Discovering circuits with large language models</title>
+  </entry>
+</feed>

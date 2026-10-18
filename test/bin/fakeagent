@@ -1,0 +1,33 @@
+#!/usr/bin/env node
+// A stand-in coding agent for the bridge test: shows a Claude-style numbered
+// prompt, moves its cursor with ↑/↓, and on Enter records the choice. Every
+// byte it receives is appended to $FAKEAGENT_LOG (one JSON line per read).
+import { appendFileSync } from 'node:fs';
+
+const LOG = process.env.FAKEAGENT_LOG;
+const OPTIONS = ['1. Yes', "2. Yes, and don't ask again for npm test commands", '3. No, and tell me what to do differently (esc)'];
+let cursor = 0;
+let done = false;
+const log = (o) => LOG && appendFileSync(LOG, `${JSON.stringify(o)}\n`);
+
+function draw() {
+  process.stdout.write('\x1b[2J\x1b[H');
+  process.stdout.write('⏺ I will run the test suite.\r\n\r\n');
+  if (done) { process.stdout.write(`⏺ You chose: ${OPTIONS[cursor]}\r\n`); return; }
+  process.stdout.write(' Do you want to proceed?\r\n');
+  OPTIONS.forEach((o, i) => process.stdout.write(`${i === cursor ? ' ❯ ' : '   '}${o}\r\n`));
+  process.stdout.write('\r\n Esc to cancel\r\n');
+}
+
+process.stdin.setRawMode(true);
+process.stdin.on('data', (b) => {
+  const s = b.toString('latin1');
+  log({ bytes: [...b] });
+  if (done) return;
+  if (s === '\x1b[A') cursor = Math.max(0, cursor - 1);
+  else if (s === '\x1b[B') cursor = Math.min(OPTIONS.length - 1, cursor + 1);
+  else if (s === '\r') { done = true; log({ chose: cursor }); }
+  else if (s === '\x03') process.exit(0);
+  draw();
+});
+draw();
