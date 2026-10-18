@@ -69,7 +69,7 @@ ok "web app built (dist/)"
 
 MODEL="models/ggml-small.en.bin"
 if [[ ! -f "$MODEL" ]] && command -v whisper-server >/dev/null; then
-  ans=n; [[ $YES == 1 ]] && ans=y || read -r -p "  Download the Whisper model for voice Ask (466 MB)? [y/N] " ans
+  if [[ $YES == 1 ]]; then ans=y; else read -r -p "  Download the Whisper model for voice Ask (466 MB)? [y/N] " ans; fi
   if [[ "$ans" =~ ^[Yy] ]]; then
     mkdir -p models
     curl -fL --progress-bar -o "$MODEL.part" https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin && mv "$MODEL.part" "$MODEL"
@@ -122,6 +122,7 @@ bold "4. Glasses app"
 # A personal package: its network whitelist names this Mac, and it connects
 # here without typing an address. Never contains the pairing code.
 ADDR="${DNS:-${IP:-$LOCAL}}"
+# shellcheck disable=SC2016 # the ${…} below are JavaScript template literals, not shell
 node -e '
   const fs = require("fs"); const [port, id, ...hosts] = process.argv.slice(1);
   const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
