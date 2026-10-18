@@ -27,8 +27,8 @@ From the Even Hub simulator, with demo agents and projects.
     <td><img src="docs/images/decision.png" alt="claude's question with its options as actions: View, Red, Green, Blue"><br>Their options, ready to pick</td>
   </tr>
   <tr>
-    <td><img src="docs/images/pane.png" alt="The agent's screen on the glasses, its question pinned on top"><br>The agent's screen, live</td>
-    <td><img src="docs/images/agents.png" alt="Agents with their model, effort and folder: claude - Opus 5.5 high, codex - GPT-6.1-Sol ultra, agy - Gemini 4 Argon high"><br>Every agent, its model and what it's doing</td>
+    <td><img src="docs/images/pane.png" alt="agy's screen on the glasses, headed agy - Gemini 4 Argon high · ~/projects/site, Idle"><br>An agent's screen, live, with its model and folder</td>
+    <td><img src="docs/images/agents.png" alt="Agents: claude asking which color the new logo should be, codex, agy"><br>Every agent and what it's doing</td>
   </tr>
   <tr>
     <td><img src="docs/images/projects.png" alt="Projects: webapp on main with 1 changed file, api, site"><br>Projects with their git state</td>
@@ -44,7 +44,8 @@ From the Even Hub simulator, with demo agents and projects.
   meanwhile. If you weren't wearing the glasses, you get a "While away: …" summary when
   you put them back on.
 - **Agents**: every tmux pane running one of your agents, with its state and time
-  ("Working · 12 min"). View it live, answer prompts, use a key strip
+  ("Working · 12 min"). View it live, headed with its model, effort and folder
+  ("codex - GPT-6.1-Sol ultra · ~/Documents"); answer prompts, use a key strip
   (↑ ↓ Enter Esc 1 2 3 y n Tab Space Bksp ^C), **Ask** by voice (typed in after 3 s; tap
   cancels), **Snap** a photo or send one from your library to the agent, send quick
   prompts, Esc, Ctrl-C, end the agent, or start a new one.

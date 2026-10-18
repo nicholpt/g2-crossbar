@@ -2,6 +2,14 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
+## Unreleased
+
+- **The model, effort and folder moved to the agent's screen.** Open an agent and its header reads `codex - GPT-6.1-Sol ultra · ~/Documents` next to its state. The agent's own footer line with the same details is hidden, so you get one more line of its output. The Agents list is back to plain agent names.
+- CI/CD:
+  - actions pinned to commits, Node 22 tested, `npm audit`, CodeQL and Dependabot;
+  - releases get a checksum, signed build provenance, and notes from this changelog;
+  - `npm test` now fails on personal details in tracked files and on mismatched versions.
+
 ## 1.0.2
 
 - **Model, effort and folder next to each agent** in Agents, e.g. `codex - GPT-6.1-Sol ultra · ~/Documents`.
