@@ -12,26 +12,26 @@ account needed). Nothing goes through a cloud service, and voice is transcribed 
 with Whisper.
 
 <p align="center">
-  <img src="docs/images/answer.gif" width="600" alt="Answering Claude Code from the glasses: Needs You shows claude is asking which color the new logo should be; picking Green sends it, and claude then finishes: the logo is green now">
+  <img src="docs/images/answer.gif" width="600" alt="Answering Claude Code from the glasses: Agents, then Needs You, where claude is asking which color the new logo should be; picking Green sends it, and claude then finishes: the logo is green now">
 </p>
 
 **→ Setting it up: [docs/SETUP.md](docs/SETUP.md)** (about 10 minutes).
 
 ## Screenshots
 
-From the Even Hub simulator, with demo agents (other project names blurred).
+From the Even Hub simulator, with demo agents and projects.
 
 <table>
   <tr>
-    <td><img src="docs/images/needs-you.png" alt="Needs You: claude is asking, codex is asking"><br>Agents waiting on you</td>
+    <td><img src="docs/images/needs-you.png" alt="Needs You: codex is asking, claude is asking"><br>Agents waiting on you</td>
     <td><img src="docs/images/decision.png" alt="claude's question with its options as actions: View, Red, Green, Blue"><br>Their options, ready to pick</td>
   </tr>
   <tr>
     <td><img src="docs/images/pane.png" alt="The agent's screen on the glasses, its question pinned on top"><br>The agent's screen, live</td>
-    <td><img src="docs/images/agents.png" alt="Agents: claude asking, codex, agy"><br>Every agent and what it's doing</td>
+    <td><img src="docs/images/agents.png" alt="Agents with their model, effort and folder: claude - Opus 5.5 high, codex - GPT-6.1-Sol ultra, agy - Gemini 4 Argon high"><br>Every agent, its model and what it's doing</td>
   </tr>
   <tr>
-    <td><img src="docs/images/projects.png" alt="Projects: g2-crossbar on main with 1 changed file"><br>Projects with their git state</td>
+    <td><img src="docs/images/projects.png" alt="Projects: webapp on main with 1 changed file, api, site"><br>Projects with their git state</td>
     <td><img src="docs/images/system.png" alt="System: vitals, clipboard, volume"><br>System vitals and controls</td>
   </tr>
 </table>

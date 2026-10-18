@@ -266,6 +266,13 @@ export function paneState(raw) {
 export function createCrossbar({ run, tmux, onAlert = () => {} }) {
   let index = new Map(); // item id -> item (with action closures) from the latest scan
   const watch = new Map(); // pane -> { agent, state, alert?: { kind, text, key?, at } }
+  // pane -> last model seen: codex hides its footer while it asks for approval
+  const models = new Map();
+  const modelOf = (p) => {
+    const m = p.agent === 'claude' ? claudeModel(p.path) : agentModel(p.agent, p.screen);
+    if (m) models.set(p.id, m);
+    return m || models.get(p.id) || '';
+  };
   const cache = new Map(); // key -> { at, value }
   const cached = (key, ms, fn) => {
     const hit = cache.get(key);
@@ -638,7 +645,7 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
       const w = watch.get(p.id);
       add(agents, {
         // "codex - GPT-6.1-Sol ultra · ~/Documents"
-        id: `pane:${p.id}`, label: p.agent ? `${p.agent} - ${[p.agent === 'claude' ? claudeModel(p.path) : agentModel(p.agent, p.screen), p.path.replace(HOME, '~')].filter(Boolean).join(' · ')}` : p.cmd, live: !!p.agent,
+        id: `pane:${p.id}`, label: p.agent ? `${p.agent} - ${[modelOf(p), p.path.replace(HOME, '~')].filter(Boolean).join(' · ')}` : p.cmd, live: !!p.agent,
         meta: w ? `${w.alert?.decision ? 'Asking' : STATE[w.state] ?? w.state}${dur(w.since)}` : '',
         attention: !!w?.alert && w.alert.kind === 'approval',
         sub: (w?.alert?.kind === 'approval' && w.alert.text) || w?.last || p.name, // the question while it's asking
