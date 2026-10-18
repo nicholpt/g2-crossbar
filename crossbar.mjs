@@ -19,7 +19,7 @@ const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 
 // User settings: crossbar.json next to this file (see crossbar.example.json), or
 // CROSSBAR_CONFIG. Every key is optional.
-export const CONFIG = process.env.CROSSBAR_CONFIG || join(ROOT, 'crossbar.json');
+const CONFIG = process.env.CROSSBAR_CONFIG || join(ROOT, 'crossbar.json');
 const DEFAULTS = {
   agents: ['claude', 'codex', 'agy', 'kimi'], // CLI commands that count as agents (tmux panes running them)
   newAgents: ['claude', 'codex'],                 // offered as "New … Here" on projects
