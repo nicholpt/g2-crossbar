@@ -3,7 +3,7 @@
 // (glasses + phone) and crossbar-tui.mjs. Everything runs through `run` (a shell
 // on the Mac); actions only resolve against the latest scan, so clients can
 // only ask for things the catalog itself offered.
-import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, openSync, readSync, closeSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, basename, dirname } from 'node:path';
 import { clean } from './text.mjs';
@@ -208,6 +208,45 @@ export function lastLine(screen) {
   return oneLine(said.slice(k).map((s) => s.l).join(' '));
 }
 
+// The model and effort an agent runs with, from its own footer: codex
+// "GPT-6.1-Sol ultra · ~/Documents · …", agy "auto · Gemini 4 Argon · high",
+// kimi "K3 thinking: high". Claude Code doesn't show it: see claudeModel.
+export function agentModel(agent, screen) {
+  const tail = screen.split('\n').map((l) => l.trim()).filter(Boolean).slice(-8);
+  if (agent === 'codex') return tail.findLast((l) => /^\S[^·]*\s·\s+[~/]/.test(l))?.split(/\s+·\s+/)[0] ?? '';
+  if (agent === 'agy') {
+    const parts = tail.findLast((l) => /·\s+(low|medium|high|xhigh|max)$/.test(l))?.split(/\s+·\s+/);
+    return parts && parts.length >= 3 ? parts.slice(-2).join(' ') : '';
+  }
+  if (agent === 'kimi') { const m = screen.match(/\b(K\d[\w.-]*) thinking: (\w+)/); return m ? `${m[1]} ${m[2]}` : ''; }
+  return '';
+}
+
+// Claude Code: the model of the newest reply in the newest session started in
+// this folder (~/.claude/projects/<folder with - for />/*.jsonl), and the
+// effort level from its settings
+export function claudeModel(cwd, home = HOME) {
+  try {
+    const dir = join(home, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-'));
+    const newest = readdirSync(dir).filter((f) => f.endsWith('.jsonl'))
+      .map((f) => ({ f, t: statSync(join(dir, f)).mtimeMs })).sort((a, b) => b.t - a.t)[0];
+    if (!newest) return '';
+    const fd = openSync(join(dir, newest.f), 'r');
+    const size = statSync(join(dir, newest.f)).size;
+    const buf = Buffer.alloc(Math.min(size, 256 * 1024));
+    readSync(fd, buf, 0, buf.length, size - buf.length);
+    closeSync(fd);
+    const id = [...buf.toString('utf8').matchAll(/"model":"([^"<][^"]*)"/g)].at(-1)?.[1];
+    if (!id) return '';
+    // claude-opus-5-5 → Opus 5.5; a proxied "claude-proxy/codex/gpt-6.1-sol" → gpt-6.1-sol
+    const last = id.split('/').at(-1);
+    const name = /^claude-[a-z]+-\d/.test(last) ? last.slice(7).replace(/-(\d+)-(\d+)(?=-|$)/, ' $1.$2').replace(/^\w/, (c) => c.toUpperCase()) : last;
+    let effort = '';
+    try { effort = JSON.parse(readFileSync(join(home, '.claude', 'settings.json'), 'utf8')).effortLevel ?? ''; } catch {}
+    return [name, effort].filter(Boolean).join(' ');
+  } catch { return ''; }
+}
+
 export function paneState(raw) {
   const lines = raw.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim()).slice(-25);
   const tail = lines.join('\n');
@@ -290,8 +329,8 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
   async function scanPanes() {
     const out = await run([
       `T=${tmux}`,
-      `$T list-panes -a -F '#{session_name}:#{window_index}.#{pane_index}\t#{window_name}\t#{pane_current_command}\t#{pane_tty}' 2>/dev/null | ` +
-      `while IFS=$(printf '\\t') read -r id name cmd tty; do printf '__P__\\t%s\\t%s\\t%s\\t%s\\n' "$id" "$name" "$cmd" "$(ps -o args= -t "\${tty#/dev/}" | tr '\\n' ' ')"; ` +
+      `$T list-panes -a -F '#{session_name}:#{window_index}.#{pane_index}\t#{window_name}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_tty}' 2>/dev/null | ` +
+      `while IFS=$(printf '\\t') read -r id name cmd path tty; do printf '__P__\\t%s\\t%s\\t%s\\t%s\\t%s\\n' "$id" "$name" "$cmd" "$path" "$(ps -o args= -t "\${tty#/dev/}" | tr '\\n' ' ')"; ` +
       // visible screen only: agents redraw in place, scrollback holds stale prompts
       `$T capture-pane -p -J -t "$id" 2>/dev/null | tail -n 40; done`,
       'true',
@@ -299,8 +338,8 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
     const panes = [];
     for (const block of out.split('__P__\t').slice(1)) {
       const nl = block.indexOf('\n');
-      const [id, name, cmd, procs = ''] = block.slice(0, nl).split('\t');
-      panes.push({ id, name, cmd, agent: procs.match(AGENT_RE)?.[2], screen: block.slice(nl + 1) });
+      const [id, name, cmd, path = '', procs = ''] = block.slice(0, nl).split('\t');
+      panes.push({ id, name, cmd, path, agent: procs.match(AGENT_RE)?.[2], screen: block.slice(nl + 1) });
     }
     // watcher: approval prompts, and working → idle ("finished")
     const fresh = [];
@@ -598,7 +637,8 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
       const keys = (key, msg) => async () => { await run(`${tmux} send-keys -t ${sq(p.id)} ${key}`); return { message: msg }; };
       const w = watch.get(p.id);
       add(agents, {
-        id: `pane:${p.id}`, label: p.agent || p.cmd, live: !!p.agent,
+        // "codex - GPT-6.1-Sol ultra · ~/Documents"
+        id: `pane:${p.id}`, label: p.agent ? `${p.agent} - ${[p.agent === 'claude' ? claudeModel(p.path) : agentModel(p.agent, p.screen), p.path.replace(HOME, '~')].filter(Boolean).join(' · ')}` : p.cmd, live: !!p.agent,
         meta: w ? `${w.alert?.decision ? 'Asking' : STATE[w.state] ?? w.state}${dur(w.since)}` : '',
         attention: !!w?.alert && w.alert.kind === 'approval',
         sub: (w?.alert?.kind === 'approval' && w.alert.text) || w?.last || p.name, // the question while it's asking
