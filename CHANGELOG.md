@@ -5,6 +5,7 @@ The Release workflow publishes the section for the tagged version as the release
 ## Unreleased
 
 - **The model, effort and folder moved to the agent's screen.** Open an agent and its header reads `codex - GPT-6.1-Sol ultra · ~/Documents` next to its state. The agent's own footer line with the same details is hidden, so you get one more line of its output. The Agents list is back to plain agent names.
+- **Fixed:** right after the list changed (say, once you answered an agent), the selected row could briefly show one item's title over the previous item's subtitle. They're now drawn as one, so they always change together.
 - CI/CD:
   - actions pinned to commits, Node 22 tested, `npm audit`, CodeQL and Dependabot;
   - releases get a checksum, signed build provenance, and notes from this changelog;

@@ -231,7 +231,6 @@ const C = {
   above: { id: 3, name: 'above' },
   box: { id: 4, name: 'box' },
   title: { id: 5, name: 'title' },
-  sub: { id: 6, name: 'sub' },
   below1: { id: 7, name: 'below1' },
   below2: { id: 8, name: 'below2' },
   term: { id: 9, name: 'term' },
@@ -423,15 +422,15 @@ function layout(page: Page) {
   }
   const col = { xPosition: COL, width: W_ITEMS };
   return {
-    containerTotalNum: 12,
+    containerTotalNum: 11,
     textObject: [
       text(C.status, { xPosition: 8, yPosition: 0, width: 560, height: 28, textColor: 2 }),
       text(C.label, { ...col, yPosition: 98, height: 28 }),
       text(C.above, { ...col, yPosition: 128, height: 27, textColor: 1 }),
-      // the selection: one soft rounded outline, title over a dimmer subtitle
+      // the selection: one soft rounded outline around the title and its subtitle,
+      // which share a container so they always change together
       text(C.box, { xPosition: COL - 12, yPosition: 157, width: W_ITEMS + 12, height: 62, borderWidth: 1, borderColor: 8, borderRadius: 10, isEventCapture: 1 }),
-      text(C.title, { xPosition: COL, yPosition: 160, width: W_ITEMS - 8, height: 28 }),
-      text(C.sub, { xPosition: COL, yPosition: 187, width: W_ITEMS - 8, height: 28, textColor: 2 }),
+      text(C.title, { xPosition: COL, yPosition: 160, width: W_ITEMS - 8, height: 56 }),
       text(C.below1, { ...col, yPosition: 224, height: 28, textColor: 2 }),
       text(C.below2, { ...col, yPosition: 254, height: 28, textColor: 1 }),
     ],
@@ -457,6 +456,12 @@ function iconPlan() {
   });
 }
 
+// One update for the selected item's title and subtitle: as two containers, a
+// changing list could show one item's title over the previous item's subtitle.
+function selection({ title, sub, ...rest }: GlassView): Record<string, Line> {
+  return { ...rest, title: { ...title, text: sub.text.trim() ? `${title.text}\n${sub.text}` : title.text } };
+}
+
 async function renderGlasses() {
   if (!bridge) return;
   if (device.wearing === false) { shown = {}; return; } // not worn: don't spend BLE/battery
@@ -469,7 +474,7 @@ async function renderGlasses() {
       page = want; shown = {};
     }
     const content: Record<string, Line> = want === 'mini' ? { mini: miniTag() } : want === 'term' ? { term: L(termView(), 4) }
-      : want === 'termkeys' ? { term: L(termView(), 4), keys: L(keyStrip(), 4) } : { ...crossbarView() };
+      : want === 'termkeys' ? { term: L(termView(), 4), keys: L(keyStrip(), 4) } : selection(crossbarView());
     for (const [name, { text: value, color }] of Object.entries(content)) {
       const v = value || ' ';
       if (shown[name] === `${color}|${v}`) continue;
