@@ -1,6 +1,6 @@
 // Terminal text cleanup for the glasses font: shared by both bridges, the
 // Crossbar catalog and its TUI. Pure (no I/O).
-export const HISTORY = Number(process.env.HISTORY || 300);
+const HISTORY = Number(process.env.HISTORY || 300);
 
 // --- terminal text cleanup -------------------------------------------------
 // TUIs (claude/codex/kimi) draw borders and glyphs the glasses font can't show

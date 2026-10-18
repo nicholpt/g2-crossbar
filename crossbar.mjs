@@ -19,7 +19,7 @@ const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 
 // User settings: crossbar.json next to this file (see crossbar.example.json), or
 // CROSSBAR_CONFIG. Every key is optional.
-export const CONFIG = process.env.CROSSBAR_CONFIG || join(ROOT, 'crossbar.json');
+const CONFIG = process.env.CROSSBAR_CONFIG || join(ROOT, 'crossbar.json');
 const DEFAULTS = {
   agents: ['claude', 'codex', 'agy', 'kimi'], // CLI commands that count as agents (tmux panes running them)
   newAgents: ['claude', 'codex'],                 // offered as "New … Here" on projects
@@ -211,15 +211,37 @@ export function lastLine(screen) {
 // The model and effort an agent runs with, from its own footer: codex
 // "GPT-6.1-Sol ultra · ~/Documents · …", agy "auto · Gemini 4 Argon · high",
 // kimi "K3 thinking: high". Claude Code doesn't show it: see claudeModel.
-export function agentModel(agent, screen) {
-  const tail = screen.split('\n').map((l) => l.trim()).filter(Boolean).slice(-8);
-  if (agent === 'codex') return tail.findLast((l) => /^\S[^·]*\s·\s+[~/]/.test(l))?.split(/\s+·\s+/)[0] ?? '';
-  if (agent === 'agy') {
-    const parts = tail.findLast((l) => /·\s+(low|medium|high|xhigh|max)$/.test(l))?.split(/\s+·\s+/);
-    return parts && parts.length >= 3 ? parts.slice(-2).join(' ') : '';
+const MODEL_LINE = {
+  codex: /^\S[^·]*\s·\s+[~/]/,
+  agy: /·\s+(low|medium|high|xhigh|max)$/,
+  kimi: /\bK\d[\w.-]* thinking: \w+/,
+};
+// index of the footer line that names the model (in the last 8 non-blank lines), or -1
+function modelLineAt(agent, lines) {
+  const re = MODEL_LINE[agent];
+  if (!re) return -1;
+  for (let i = lines.length - 1, seen = 0; i >= 0 && seen < 8; i--) {
+    if (!lines[i].trim()) continue;
+    seen++;
+    if (re.test(lines[i].trim())) return i;
   }
-  if (agent === 'kimi') { const m = screen.match(/\b(K\d[\w.-]*) thinking: (\w+)/); return m ? `${m[1]} ${m[2]}` : ''; }
-  return '';
+  return -1;
+}
+export function agentModel(agent, screen) {
+  const lines = screen.split('\n');
+  const l = lines[modelLineAt(agent, lines)]?.trim();
+  if (!l) return '';
+  if (agent === 'codex') return l.split(/\s+·\s+/)[0];
+  if (agent === 'agy') { const parts = l.split(/\s+·\s+/); return parts.length >= 3 ? parts.slice(-2).join(' ') : ''; }
+  const m = l.match(/\b(K\d[\w.-]*) thinking: (\w+)/);
+  return m ? `${m[1]} ${m[2]}` : '';
+}
+// The screen without that footer line: the pane view's header shows the model
+// instead, which frees a line for the agent's output.
+export function withoutModelLine(agent, screen) {
+  const lines = screen.split('\n');
+  const i = modelLineAt(agent, lines);
+  return i < 0 ? screen : [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n');
 }
 
 // Claude Code: the model of the newest reply in the newest session started in
@@ -478,10 +500,15 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
   async function view(id) {
     if (id.startsWith('pane:')) {
       const pane = id.slice(5);
-      const out = await run(`T=${tmux}; $T display -p -t ${sq(pane)} '#{window_name}' 2>/dev/null || echo __GONE__; echo __G2__; $T capture-pane -p -J -t ${sq(pane)} -S -300 2>/dev/null; true`);
+      const out = await run(`T=${tmux}; $T display -p -t ${sq(pane)} '#{window_name}\t#{pane_current_path}' 2>/dev/null || echo __GONE__; echo __G2__; $T capture-pane -p -J -t ${sq(pane)} -S -300 2>/dev/null; true`);
       const [head, body = ''] = out.split('__G2__\n');
       if (head.includes('__GONE__')) return { label: `${pane} (closed)`, lines: ['That pane has closed.'] };
-      return { label: head.trim() || pane, lines: clean(body), decision: parseDecision(body) ?? undefined };
+      const [name, path = ''] = head.trim().split('\t');
+      const agent = watch.get(pane)?.agent;
+      if (!agent) return { label: name || pane, lines: clean(body), decision: parseDecision(body) ?? undefined };
+      // "codex - GPT-6.1-Sol ultra · ~/Documents" in the header, so its own footer line can go
+      const label = `${agent} - ${[modelOf({ id: pane, agent, path, screen: body }), path.replace(HOME, '~')].filter(Boolean).join(' · ')}`;
+      return { label, lines: clean(withoutModelLine(agent, body)), decision: parseDecision(body) ?? undefined };
     }
     if (id === 'vitals') return vitals();
     if (id === 'music') {
@@ -644,8 +671,7 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
       const keys = (key, msg) => async () => { await run(`${tmux} send-keys -t ${sq(p.id)} ${key}`); return { message: msg }; };
       const w = watch.get(p.id);
       add(agents, {
-        // "codex - GPT-6.1-Sol ultra · ~/Documents"
-        id: `pane:${p.id}`, label: p.agent ? `${p.agent} - ${[modelOf(p), p.path.replace(HOME, '~')].filter(Boolean).join(' · ')}` : p.cmd, live: !!p.agent,
+        id: `pane:${p.id}`, label: p.agent || p.cmd, live: !!p.agent,
         meta: w ? `${w.alert?.decision ? 'Asking' : STATE[w.state] ?? w.state}${dur(w.since)}` : '',
         attention: !!w?.alert && w.alert.kind === 'approval',
         sub: (w?.alert?.kind === 'approval' && w.alert.text) || w?.last || p.name, // the question while it's asking

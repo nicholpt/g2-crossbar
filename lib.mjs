@@ -72,8 +72,6 @@ export function authorize(req) {
   return isOwnDevice(ip);
 }
 
-export const sq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
-
 // Run a shell command on this Mac.
 export function run(cmd) {
   return new Promise((resolve, reject) => {
@@ -81,8 +79,6 @@ export function run(cmd) {
       err ? reject(new Error((stderr || err.message).trim())) : resolve(stdout));
   });
 }
-
-export { clean } from './text.mjs';
 
 // Static files for the web app, only to allowed devices. A page opened with
 // ?key=… (home mode) gets it as a cookie so its own requests carry it.

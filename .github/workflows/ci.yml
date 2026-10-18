@@ -8,19 +8,29 @@ on:
 permissions:
   contents: read
 
+# a newer push to the same branch or PR replaces the running check
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Actions are pinned to commits (Dependabot keeps them current).
 jobs:
   test:
-    name: Test (${{ matrix.os }})
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - { os: macos-latest, node: 24 }
+          - { os: ubuntu-latest, node: 24 }
+          - { os: ubuntu-latest, node: 22 } # oldest the tests run on (TypeScript imports)
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: npm
       - name: Install tmux
         run: |
@@ -30,18 +40,33 @@ jobs:
       - run: npm run typecheck
       - name: Syntax-check the bridge
         run: for f in *.mjs bin/*.mjs; do node --check "$f"; done
-      - name: Tests (unit, screen fixtures, bridge + fake agent in tmux)
+      - name: Tests (unit, screen fixtures, bridge + fake agent in tmux, repo hygiene)
         run: npm test
       - name: Package (validates app.json, builds crossbar.ehpk)
         run: npm run pack
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: matrix.os == 'macos-latest'
         with:
           name: crossbar-ehpk
           path: crossbar.ehpk
 
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Known vulnerabilities (high or worse fail the build)
+        run: npm audit --audit-level=high
+      - name: Signatures of installed packages
+        run: npm ci --ignore-scripts && npm audit signatures
+
   shellcheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: shellcheck bin/setup test/bin/tmux-test
