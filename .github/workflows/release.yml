@@ -1,32 +1,48 @@
 name: Release
 
-# Push a tag like v1.0.1 (matching "version" in app.json) to publish
-# crossbar.ehpk as a GitHub Release.
+# Push a tag like v1.0.3 to publish crossbar.ehpk as a GitHub Release. The tag
+# must match "version" in app.json, package.json and package-lock.json, and
+# CHANGELOG.md's section for that version becomes the release notes.
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write     # create the release
+      id-token: write     # sign the provenance attestation
+      attestations: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
-      - name: Tag matches app.json
+      - name: Tag matches the version
         run: |
           v=$(node -p 'require("./app.json").version')
           [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME but app.json says $v"; exit 1; }
       - run: brew install tmux
       - run: npm ci
-      - run: npm test
+      - run: npm test # includes: package.json, the lockfile and CHANGELOG.md agree with app.json
       - run: npm run pack
+      - name: Checksum
+        run: shasum -a 256 crossbar.ehpk > crossbar.ehpk.sha256
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: crossbar.ehpk
+      - name: Release notes from CHANGELOG.md
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          awk -v h="## $v" '$0 == h {on = 1; next} /^## / {on = 0} on' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no '## $v' section"; exit 1; }
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" crossbar.ehpk --generate-notes --title "Crossbar $GITHUB_REF_NAME"
+        run: gh release create "$GITHUB_REF_NAME" crossbar.ehpk crossbar.ehpk.sha256 --notes-file notes.md --title "Crossbar $GITHUB_REF_NAME"

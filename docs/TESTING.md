@@ -5,8 +5,7 @@ npm test            # builds the app, then runs every test (Node 22.18+, tmux)
 npm run typecheck
 ```
 
-CI runs both on Ubuntu and macOS for every push and pull request, plus ShellCheck on
-the shell scripts and a package build (`npm run pack`, which also validates `app.json`).
+CI runs the same on every push and pull request (see [CI](#ci)).
 
 ## What the tests cover
 
@@ -17,6 +16,8 @@ the shell scripts and a package build (`npm run pack`, which also validates `app
 | `test/address.test.mjs` | Which addresses the phone app will connect to |
 | `test/auth.test.mjs` | Home mode's pairing code; this Mac always allowed |
 | `test/feed.test.mjs` | RSS, Atom and arXiv headline parsing |
+| `test/model.test.mjs` | The model and effort shown next to each agent |
+| `test/repo.test.mjs` | No emails, home folders or tailnet addresses in tracked files; versions and changelog in sync |
 
 The bridge test uses `tmux -L crossbar-test` (see `test/bin/tmux-test`), so it never
 touches your own tmux sessions.
@@ -72,11 +73,27 @@ CI can't wear the glasses. Before tagging a release, on real hardware:
 
 ## Releasing
 
-Bump `version` in `app.json` (and `package.json`), commit, then tag it:
+1. Bump `version` in `app.json` and run `npm version <x.y.z> --no-git-tag-version` (package.json and the lockfile).
+2. Add a `## <x.y.z>` section at the top of `CHANGELOG.md`.
+3. Commit, then tag it:
 
-```sh
-git tag v1.0.1 && git push origin v1.0.1
-```
+   ```sh
+   git tag -a v1.0.3 -m "Crossbar 1.0.3" && git push origin v1.0.3
+   ```
 
-The Release workflow checks the tag matches `app.json`, runs the tests, and attaches
-`crossbar.ehpk` to a GitHub Release.
+`npm test` fails if the versions or the changelog don't line up, so step 1 and 2 can't be
+half done. The Release workflow re-runs the tests, builds `crossbar.ehpk`, and publishes it
+with a SHA-256 checksum, a signed build-provenance attestation and the changelog section as
+the notes. Check a download with `gh attestation verify crossbar.ehpk --repo nicholpt/g2-crossbar`.
+
+## CI
+
+Every push and pull request runs, on GitHub Actions:
+
+- **Test**: typecheck, the whole suite and a package build, on macOS (Node 24) and Ubuntu
+  (Node 24 and 22).
+- **Dependency audit**: `npm audit` (high or worse fails) and registry signatures.
+- **ShellCheck** on the shell scripts.
+- **CodeQL** static analysis (also weekly).
+
+Dependabot opens grouped update PRs weekly for npm packages and the pinned actions.
