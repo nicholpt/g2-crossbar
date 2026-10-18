@@ -149,6 +149,11 @@
     "decision": null,
     "lastLine": "I ran curl -sI https://example.com and example.com answered with HTTP/2 200. Cloudflare served it from its cache, and the page was last modi"
   },
+  "claude-idle-feedback-survey": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": "Terminal multiplexers like tmux and GNU Screen let you run many terminal sessions inside one window and keep them alive on their own, separa"
+  },
   "claude-idle-title-rule": {
     "state": "idle",
     "decision": null,

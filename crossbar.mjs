@@ -171,8 +171,10 @@ const joinPara = (lines, from) => {
 const oneLine = (text) => clean(text).join(' ').replace(/\s+/g, ' ').trim().slice(0, 140);
 // footers and hints under the input box (agy/gemini/claude/codex)
 const FOOTER = /^(esc to cancel|\? for shortcuts)\b|· (high|medium|low)$|no sandbox|^~\/\S*\s{2,}/i;
+// Claude Code's feedback survey under its answer: not something it said
+const SURVEY = /^\s*●\s+How is Claude doing\b|^\s*1: Bad\s+2: Fine\b/;
 export function lastLine(screen) {
-  const lines = screen.split('\n').map((l) => l.trimEnd());
+  const lines = screen.split('\n').map((l) => (SURVEY.test(l) ? '' : l.trimEnd()));
   // whichever is later: a recap quoted in some other output must not win over a newer message
   const recap = lines.findLastIndex((l) => /^\s*↳ Recap:/.test(l));
   const msg = lines.findLastIndex((l) => MESSAGE.test(l) && !TOOL.test(l.match(MESSAGE)[1]) && !/^[•⏺●]\s+Queued follow-up/.test(l) && !WORKING.test(l));
@@ -195,7 +197,7 @@ export function lastLine(screen) {
     const l = clean(raw).join(' ').trim().replace(/^[•●◦·*]\s+/, '');
     if (l && !/^\s*[─━═]{3,}/.test(raw) && !/^\s*[⠀-⣿]/.test(raw) && !/^[»❯>›]/.test(l) && !/^[─━═-]{3,}/.test(l)
       && !/shortcuts|to queue message|Press up to edit|alt\+m|context left|tab to|Queued follow-up|to answer$|^\+ (Show details|\d+ lines?)|ctrl\+o to expand|background terminal|\/ps to view|auto mode|\/artifact to review|^\d+ tokens$|^Tip:/i.test(l) && !FOOTER.test(l)
-      && !WORKING.test(l) && !/^(Working|Thinking|Compacting)\b.*\(\d/.test(l) && !/^\w+ for \d+[smh]/.test(l) // spinner/status lines ("Brewed for 5s · done")
+      && !WORKING.test(l) && !/^(Working|Thinking|Compacting)\b.*\(\d/.test(l) && !/^\S+ for \d+[smh]/.test(l) // spinner/status lines ("Brewed for 5s · done", "Sautéed for 11s")
       && !/· ~\/|^(GPT|gpt|o\d|Gemini|Claude|Opus|Sonnet|Haiku|Fable|Kimi)[-\s].*·/.test(l)) said.push({ i, indent, l, bullet: /^\s*[•●◦·*]\s/.test(raw) });
   });
   if (!said.length) return '';
