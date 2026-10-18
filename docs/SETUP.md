@@ -88,6 +88,8 @@ Phone*). Enter your Mac's address from step 3 (and, for a `.local` address, the 
 code) and tap **Connect**. You can come back to this screen any time with the ⚙ button in
 the top-right of the phone app.
 
+<p align="center"><img src="images/setup.png" width="480" alt="The glasses before setup: Finish Setup on Your Phone. In the Even app: Crossbar › Setup"></p>
+
 The setup screen accepts only addresses that can be your Mac: a `*.ts.net` name, a
 Tailscale IP (`100.64.0.0` to `100.127.255.255`, or `fd7a:115c:a1e0:…`), a `*.local`
 name, or `localhost`. Add `:port` if you changed the port.
@@ -111,7 +113,7 @@ Crossbar finds agents by looking for tmux panes running one of the commands in `
 
 ```sh
 tmux new -s agents
-claude            # or codex, gemini, kimi…
+claude            # or codex, agy, kimi…
 ```
 
 Or pick **Agents → New Claude** on the glasses, which starts one in a tmux session called

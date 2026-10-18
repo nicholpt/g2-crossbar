@@ -1,5 +1,5 @@
 {
-  "agents": ["claude", "codex", "gemini", "kimi"],
+  "agents": ["claude", "codex", "agy", "kimi"],
   "newAgents": ["claude", "codex"],
   "prompts": [
     "continue",

@@ -1,8 +1,8 @@
 # Crossbar for Even G2
 
 A cross-bar menu for [Even Realities G2](https://www.evenrealities.com/) glasses,
-inspired by the PSP's XrossMediaBar, that keeps an eye on your Mac. Watch your coding agents (Claude Code, Codex, Gemini,
-Kimi…) running in tmux, answer their prompts from your glasses, ask them things by
+inspired by the PSP's XrossMediaBar, that keeps an eye on your Mac. Watch your coding agents (Claude Code, Codex,
+Antigravity, Kimi…) running in tmux, answer their prompts from your glasses, ask them things by
 voice, and browse your projects, apps, music and notes. A headline ticker you choose
 scrolls along the top line.
 
@@ -11,19 +11,30 @@ over [Tailscale](https://tailscale.com) (works anywhere) or on your home Wi-Fi (
 account needed). Nothing goes through a cloud service, and voice is transcribed locally
 with Whisper.
 
-```
-10:05 PM   Discovering state-of-the-art quantum circuits…   ■■■■
-       ⚙        [>_]        ▭        ⧉
-                Agents
-              ╭──────────────────────────────╮
-              │ codex                         │
-              │ Working · 12 min · Run tests… │
-              ╰──────────────────────────────╯
-                claude
-                gemini
-```
+<p align="center">
+  <img src="docs/images/answer.png" width="600" alt="Answering Claude Code's question from the glasses: Which color should the new logo be? Green, Blue, Type something">
+</p>
 
 **→ Setting it up: [docs/SETUP.md](docs/SETUP.md)** (about 10 minutes).
+
+## Screenshots
+
+From the Even Hub simulator, with demo agents (other project names blurred).
+
+<table>
+  <tr>
+    <td><img src="docs/images/needs-you.png" alt="Needs You: claude is asking, codex is asking"><br>Agents waiting on you</td>
+    <td><img src="docs/images/decision.png" alt="claude's question with its options as actions: View, Red, Green, Blue"><br>Their options, ready to pick</td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/pane.png" alt="The agent's screen on the glasses, its question pinned on top"><br>The agent's screen, live</td>
+    <td><img src="docs/images/agents.png" alt="Agents: claude asking, codex, agy"><br>Every agent and what it's doing</td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/projects.png" alt="Projects: g2-crossbar on main with 1 changed file"><br>Projects with their git state</td>
+    <td><img src="docs/images/system.png" alt="System: vitals, clipboard, volume"><br>System vitals and controls</td>
+  </tr>
+</table>
 
 ## What it does
 
@@ -81,7 +92,7 @@ There's also a terminal version for the Mac itself: `npm run tui`.
 
 | Key | Default | What |
 | --- | --- | --- |
-| `agents` | `["claude","codex","gemini","kimi"]` | Commands that count as agents when running in a tmux pane |
+| `agents` | `["claude","codex","agy","kimi"]` | Commands that count as agents when running in a tmux pane |
 | `newAgents` | `["claude","codex"]` | Offered as "New … Here" on projects |
 | `prompts` | continue, run the tests… | Quick prompts on each agent |
 | `vaults` | `["~/Documents/Obsidian Vault"]` | Folders searched for Markdown notes |

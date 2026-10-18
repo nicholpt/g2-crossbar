@@ -21,7 +21,7 @@ const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 // CROSSBAR_CONFIG. Every key is optional.
 export const CONFIG = process.env.CROSSBAR_CONFIG || join(ROOT, 'crossbar.json');
 const DEFAULTS = {
-  agents: ['claude', 'codex', 'gemini', 'kimi'], // CLI commands that count as agents (tmux panes running them)
+  agents: ['claude', 'codex', 'agy', 'kimi'], // CLI commands that count as agents (tmux panes running them)
   newAgents: ['claude', 'codex'],                 // offered as "New … Here" on projects
   prompts: ['continue', 'run the tests and fix any failures', '/review', 'commit your changes with a clear message',
     'summarize what you did in 3 short bullet points'],
@@ -599,7 +599,7 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
         id: `pane:${p.id}`, label: p.agent || p.cmd, live: !!p.agent,
         meta: w ? `${w.alert?.decision ? 'Asking' : STATE[w.state] ?? w.state}${dur(w.since)}` : '',
         attention: !!w?.alert && w.alert.kind === 'approval',
-        sub: w?.last || p.name,
+        sub: (w?.alert?.kind === 'approval' && w.alert.text) || w?.last || p.name, // the question while it's asking
         actions: [
           { id: 'view', label: 'View', run: async () => ({ view: `pane:${p.id}` }) },
           ...(w?.alert?.decision ? optionActions(p.id, w.alert.decision) : []),
