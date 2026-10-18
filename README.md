@@ -51,15 +51,15 @@ From the Even Hub simulator, with demo agents (other project names blurred).
 - **Projects**: git repos under ~/Documents, ~/src, ~/code, ~/Developer, ~/Projects
   (branch, changes, ahead/behind, last commit). Start an agent in one, see its changes,
   pull (fast-forward only).
-- **System**: live vitals (CPU/GPU/memory/network sparklines), the Mac's clipboard (view
-  it, copy text from your phone, paste it into an agent), volume, display sleep, log
-  tails, load/uptime/disk.
+- **Notes**: your most recently edited Markdown notes (an Obsidian vault by default),
+  readable page by page.
 - **Running / Apps**: open, bring to front, quit.
 - **Music**: Spotify now playing, play/pause, next/previous, volume, shuffle.
 - **Network**: your tailnet devices (with ping) and Docker containers (logs, start,
   stop, restart).
-- **Notes**: your most recently edited Markdown notes (an Obsidian vault by default),
-  readable page by page.
+- **System**: live vitals (CPU/GPU/memory/network sparklines), the Mac's clipboard (view
+  it, copy text from your phone, paste it into an agent), volume, display sleep, log
+  tails, load/uptime/disk.
 - **Top line**: the time, then headlines from any RSS/Atom feeds you choose (newest AI
   papers on arXiv by default), scrolling sideways when they're long, and the glasses'
   battery.

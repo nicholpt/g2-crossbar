@@ -741,7 +741,8 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
     if (!noteList.length) add(notesCat, { id: 'notes:none', label: 'No notes found', sub: `vaults: ${cfg.vaults.map(tilde).join(', ')} (set in crossbar.json)`, actions: [] });
 
     index = items;
-    return [needs, sys, agents, projCat, runningCat, appsCat, musicCat, net, notesCat];
+    // Needs You right before Agents (where it opens), work next, then the Mac, System last
+    return [needs, agents, projCat, notesCat, runningCat, appsCat, musicCat, net, sys];
   }
 
   return {
