@@ -1,0 +1,150 @@
+#!/bin/bash
+# One-time setup on the Mac that runs your agents. Safe to re-run (it updates).
+#   bin/setup              use Crossbar anywhere, over Tailscale (recommended)
+#   bin/setup --home       use Crossbar on your home network only, no Tailscale (pairing code)
+#   bin/setup --yes        also download the Whisper model for voice Ask without asking
+#   bin/setup --uninstall  stop and remove the bridge's login item
+set -euo pipefail
+cd "$(dirname "$0")/.."
+ROOT="$PWD"
+LABEL="com.g2crossbar.bridge"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+PORT="${CROSSBAR_PORT:-8787}"
+MODE=tailscale YES=0
+for a in "$@"; do
+  case "$a" in
+    --home) MODE=home ;;
+    --yes) YES=1 ;;
+    --uninstall) UNINSTALL=1 ;;
+    *) echo "unknown option: $a (see the top of bin/setup)" >&2; exit 2 ;;
+  esac
+done
+
+bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+ok() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
+warn() { printf '  \033[33m!\033[0m %s\n' "$*"; }
+die() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
+
+if [[ -n "${UNINSTALL:-}" ]]; then
+  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+  rm -f "$PLIST"
+  ok "bridge stopped and removed from login items (the repo and your crossbar.json are untouched)"
+  exit 0
+fi
+
+[[ "$(uname)" == "Darwin" ]] || die "Crossbar's bridge runs on macOS (it drives apps, Spotify and the clipboard through macOS tools)."
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+bold "1. Prerequisites"
+command -v node >/dev/null || die "Node.js 20+ is missing: brew install node"
+[[ "$(node -p 'process.versions.node.split(".")[0]')" -ge 20 ]] || die "Node.js 20+ is needed (you have $(node -v)): brew upgrade node"
+ok "node $(node -v)"
+command -v tmux >/dev/null || die "tmux is missing: brew install tmux   (Crossbar finds your agents in tmux panes)"
+ok "tmux $(tmux -V | cut -d' ' -f2)"
+TS="" IP="" IP6="" DNS="" LOCAL="" KEY=""
+if [[ $MODE == tailscale ]]; then
+  TS="$(command -v tailscale || true)"
+  [[ -z "$TS" && -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]] && TS=/Applications/Tailscale.app/Contents/MacOS/Tailscale
+  [[ -n "$TS" ]] || die "Tailscale is missing: install it from https://tailscale.com/download and sign in (or use bin/setup --home)"
+  IP="$("$TS" ip -4 2>/dev/null | head -1 || true)"
+  [[ -n "$IP" ]] || die "Tailscale isn't connected: open Tailscale and sign in, then re-run bin/setup"
+  IP6="$("$TS" ip -6 2>/dev/null | head -1 || true)"
+  DNS="$("$TS" status --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).Self.DNSName.replace(/\.$/,""))}catch{}})' || true)"
+  ok "tailscale $IP${DNS:+ ($DNS)}"
+  [[ -n "$DNS" ]] || warn "MagicDNS is off: the phone will use $IP (turn MagicDNS on in the Tailscale admin console for a stable name)"
+else
+  LOCAL="$(scutil --get LocalHostName).local"
+  ok "home network: this Mac is $LOCAL"
+  # keep the pairing code across re-runs, so the phone stays paired
+  KEY="$(/usr/libexec/PlistBuddy -c 'Print :EnvironmentVariables:CROSSBAR_KEY' "$PLIST" 2>/dev/null || true)"
+  [[ ${#KEY} -ge 8 ]] || KEY="$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 12)"
+fi
+if command -v whisper-server >/dev/null; then ok "whisper-server (voice Ask)"; else warn "whisper-server missing: voice Ask won't work until you brew install whisper-cpp"; fi
+
+bold "2. Build"
+npm install --no-audit --no-fund --loglevel=error
+npm run -s build >/dev/null
+ok "web app built (dist/)"
+[[ -f crossbar.json ]] || { cp crossbar.example.json crossbar.json; ok "created crossbar.json (your settings; see README)"; }
+
+MODEL="models/ggml-small.en.bin"
+if [[ ! -f "$MODEL" ]] && command -v whisper-server >/dev/null; then
+  ans=n; [[ $YES == 1 ]] && ans=y || read -r -p "  Download the Whisper model for voice Ask (466 MB)? [y/N] " ans
+  if [[ "$ans" =~ ^[Yy] ]]; then
+    mkdir -p models
+    curl -fL --progress-bar -o "$MODEL.part" https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin && mv "$MODEL.part" "$MODEL"
+    ok "Whisper model downloaded"
+  fi
+fi
+
+bold "3. Bridge (starts at login, restarts if it stops)"
+mkdir -p .run "$HOME/Library/LaunchAgents"
+NODE="$(command -v node)"
+ENVS="    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>CROSSBAR_MODE</key><string>$MODE</string>
+    <key>CROSSBAR_PORT</key><string>$PORT</string>"
+[[ -n "$TS" ]] && ENVS+="
+    <key>TAILSCALE_BIN</key><string>$TS</string>"
+[[ -n "$KEY" ]] && ENVS+="
+    <key>CROSSBAR_KEY</key><string>$KEY</string>"
+umask 077 # the plist holds the pairing code in home mode
+cat > "$PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Crossbar bridge for Even G2 (written by $ROOT/bin/setup) -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array><string>$NODE</string><string>$ROOT/crossbar-server.mjs</string></array>
+  <key>WorkingDirectory</key><string>$ROOT</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+$ENVS
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <!-- also covers login before the network is up: the bridge exits and is retried -->
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>$ROOT/.run/crossbar.log</string>
+  <key>StandardErrorPath</key><string>$ROOT/.run/crossbar.log</string>
+</dict>
+</plist>
+PLIST
+umask 022
+launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$PLIST"
+for _ in $(seq 1 20); do curl -s -o /dev/null -m 1 "http://127.0.0.1:$PORT/" && break; sleep 0.5; done
+curl -s -o /dev/null -m 2 "http://127.0.0.1:$PORT/" || die "the bridge didn't start: see $ROOT/.run/crossbar.log"
+ok "bridge running on port $PORT, $MODE mode (log: .run/crossbar.log)"
+
+bold "4. Glasses app"
+# A personal package: its network whitelist names this Mac, and it connects
+# here without typing an address. Never contains the pairing code.
+ADDR="${DNS:-${IP:-$LOCAL}}"
+node -e '
+  const fs = require("fs"); const [port, id, ...hosts] = process.argv.slice(1);
+  const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+  if (id) app.package_id = id;
+  const net = app.permissions.find((p) => p.name === "network");
+  net.whitelist = hosts.filter(Boolean).map((h) => (h.includes(":") ? `[${h}]` : h)).flatMap((h) => [`http://${h}:${port}`, `ws://${h}:${port}`]);
+  fs.writeFileSync("app.local.json", JSON.stringify(app, null, 2) + "\n");
+' "$PORT" "${CROSSBAR_PACKAGE_ID:-}" "$DNS" "$IP" "$IP6" "$LOCAL"
+VITE_CROSSBAR_ADDR="$ADDR:$PORT" npx vite build --outDir dist-pack --logLevel error
+mv dist-pack/crossbar.html dist-pack/index.html
+npx evenhub pack app.local.json dist-pack -o crossbar.ehpk >/dev/null
+rm -rf dist-pack
+ok "built crossbar.ehpk for this Mac ($ADDR)"
+
+echo
+bold "Done. Next:"
+if [[ $MODE == tailscale ]]; then
+  echo "  • Install Tailscale on your phone, signed in to the same account."
+else
+  echo "  • Keep your phone on the same Wi-Fi as this Mac."
+fi
+echo "  • Install the glasses app: upload crossbar.ehpk as a private build (docs/SETUP.md, step 4)."
+echo "  • On the phone's setup screen (⚙), the address is:  $ADDR"
+[[ -n "$KEY" ]] && echo "    and the pairing code is:  $KEY"
+echo "  • Start an agent in tmux:  tmux new -s agents  then  claude  (or codex, gemini, kimi)"
+echo "  Guide: docs/SETUP.md"
