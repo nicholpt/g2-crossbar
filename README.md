@@ -128,8 +128,9 @@ Environment variables for the bridge (`bin/setup` writes them into the login ite
   not encrypted by Crossbar, so use home mode only on a network you trust, and prefer
   Tailscale otherwise.
 - The phone app only connects to addresses that can be your Mac: `*.ts.net` names,
-  Tailscale IPs (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`), `*.local` names and
-  `localhost`. The Mac itself can always use `http://localhost:8787` (browser, simulator).
+  Tailscale IPs (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`) and `*.local` names, on port
+  8787: exactly the `network.whitelist` in `app.json`. The Mac itself can always use
+  `http://localhost:8787` (browser, simulator).
 - It can only run the actions its own catalog offers (open/quit apps, keys into agent
   panes, git pull --ff-only…); destructive ones ask for a second tap. Keys go only to the
   pane you're viewing.
