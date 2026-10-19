@@ -436,8 +436,8 @@ function paperLines(): string[] {
   return [...w(p.title), ...(byline ? w(byline) : []), ...(p.summary ? w(p.summary) : [])];
 }
 // The current paper's title, whole (up to MINI_ROWS lines, no sliding): the
-// next one every 20 s, a single write each.
-const MINI_TITLE_MS = 20_000;
+// next one every 16 s, a single write each.
+const MINI_TITLE_MS = 16_000;
 function miniTitle(): string[] {
   if (!ticker.at) ticker.at = Date.now();
   if (Date.now() - ticker.at > MINI_TITLE_MS) { ticker.i++; ticker.at = Date.now(); }

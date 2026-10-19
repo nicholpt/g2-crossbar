@@ -66,7 +66,7 @@ From the Even Hub simulator, with demo agents and projects.
   papers on arXiv by default), scrolling sideways when they're long, and the glasses'
   battery.
 - **Minimize**: long press shrinks everything to the bottom-left corner: the feed's
-  titles, a new one every 20 s, over the time, agents needing you, the paper's number and the
+  titles, a new one every 16 s, over the time, agents needing you, the paper's number and the
   battery (inside an agent's view, the agent and its state instead of the time). Swipe
   for the previous or next title, or double-tap for the previous one; tap one to read it, and the corner (a quarter of the
   screen) fills with its title, authors and abstract. Swipe scrolls it; double-tap goes
