@@ -26,7 +26,7 @@ type Action = { id: string; label: string; confirm?: boolean; needs?: 'mic' | 'c
 type Item = { id: string; label: string; sub: string; meta?: string; live?: boolean; actions: Action[] };
 type Cat = { id: string; label: string; icon: string; items: Item[] };
 type Decision = { question: string; options: { label: string }[]; cursor: number; sig: string };
-type Frame = { type: 'frame'; target: string; label: string; lines: string[]; top?: boolean; decision?: Decision };
+type Frame = { type: 'frame'; target: string; label: string; subject?: string; lines: string[]; top?: boolean; decision?: Decision };
 type Alert = { pane: string; agent: string; kind: 'approval' | 'finished'; text?: string };
 type Ask = { state: string; agent?: string; text?: string; until: number };
 type Level = 'bar' | 'items' | 'menu' | 'view' | 'answer';
@@ -233,6 +233,7 @@ const C = {
   title: { id: 5, name: 'title' },
   below1: { id: 7, name: 'below1' },
   below2: { id: 8, name: 'below2' },
+  head: { id: 1, name: 'head' }, // ids are per page: shares 1 with the Crossbar's status line
   term: { id: 9, name: 'term' },
   mini: { id: 11, name: 'mini' },
   keys: { id: 10, name: 'keys' },
@@ -279,18 +280,22 @@ const ticker = { i: 0, at: 0 };
 function paperTicker(room: number): string {
   if (!papers.length || room < 80) return '';
   if (!ticker.at) ticker.at = Date.now();
-  const title = papers[ticker.i % papers.length].title;
+  const r = slid(papers[ticker.i % papers.length].title, room, ticker.at);
+  if (r.over) { ticker.i++; ticker.at = Date.now(); return paperTicker(room); }
+  return r.text;
+}
+// `text` in `room` px, `since` it first showed: held, slid a few characters per
+// step to its end, held; `over` once that's done (short texts stay 8 s).
+function slid(text: string, room: number, since: number): { text: string; over: boolean } {
   const end = (() => { // first offset from which the rest fits
     let k = 0;
-    while (k < title.length && getTextWidth(title.slice(k)) > room) k += STEP_CHARS;
+    while (k < text.length && getTextWidth(text.slice(k)) > room) k += STEP_CHARS;
     return k;
   })();
-  const elapsed = Date.now() - ticker.at;
-  const steps = Math.max(0, Math.floor((elapsed - HOLD_MS) / STEP_MS));
-  const off = Math.min(end, steps * STEP_CHARS);
-  const done = HOLD_MS + Math.ceil(end / STEP_CHARS) * STEP_MS + (end ? HOLD_MS : 6000); // short titles stay 8 s
-  if (elapsed > done) { ticker.i++; ticker.at = Date.now(); return paperTicker(room); }
-  return fit(off ? title.slice(off) : title, room);
+  const elapsed = Date.now() - since;
+  const off = Math.min(end, Math.max(0, Math.floor((elapsed - HOLD_MS) / STEP_MS)) * STEP_CHARS);
+  const done = HOLD_MS + Math.ceil(end / STEP_CHARS) * STEP_MS + (end ? HOLD_MS : 6000);
+  return { text: fit(off ? text.slice(off).trimStart() : text, room), over: elapsed > done };
 }
 
 function askView(): Partial<GlassView> {
@@ -361,24 +366,46 @@ function wrap(lines: string[], px: number): string[] {
 // Live views: a quiet header (name · state) over a rule, then the content.
 // Terminal-like views follow the tail; documents start at the top and page.
 let viewOpened = 0;
-function termView(): string {
+// An open view: a header line (its own container, so a sliding subject only
+// resends that line), then a rule and the screen.
+function termBody(): string {
   const rows = frame && frame.target === viewing ? wrap(frame.lines, 566) : ['Loading…'];
   const n = VIEW_ROWS - 2 - (keymode ? 1 : 0);
   let start: number;
-  let pos = '';
   scroll = Math.max(0, Math.min(scroll, rows.length - n));
-  if (frame?.top) {
-    start = scroll;
-    if (rows.length > n) pos = `${Math.floor(scroll / (n - 1)) + 1} of ${Math.ceil((rows.length - 1) / (n - 1))}`;
-  } else start = Math.max(0, rows.length - scroll - n);
+  if (frame?.top) start = scroll;
+  else start = Math.max(0, rows.length - scroll - n);
+  return ['─'.repeat(Math.floor(566 / (getTextWidth('─') || 10))), ...rows.slice(start, start + n)].join('\n');
+}
+// "Claude - Opus 5.5 high · ~/Documents · deepseek disk space cleanup     Idle":
+// what the agent is working on (its terminal title) after the label; when that
+// doesn't fit, it alone slides sideways.
+const subjectSlide = { text: '', at: 0 };
+let subjectSliding = false; // the open view's subject is wider than its room
+function termHead(): string {
+  subjectSliding = false;
+  let pos = '';
+  if (frame?.top && frame.target === viewing) { // "2 of 5" for documents (agents' screens follow the bottom)
+    const rows = wrap(frame.lines, 566).length, n = VIEW_ROWS - 2 - (keymode ? 1 : 0);
+    if (rows > n) pos = `${Math.floor(scroll / (n - 1)) + 1} of ${Math.ceil((rows - 1) / (n - 1))}`;
+  }
   const d = decision();
   const name = cap(frame?.label ?? '');
   const state = isPane() ? (cat()?.id === 'agents' ? item()?.meta ?? '' : '') : pos;
   const hint = keymode ? 'Swipe to choose · tap to send · double-tap when done'
     : d ? `${d.question} — tap to answer`
     : Date.now() - viewOpened < 3500 ? (isPane() ? 'Tap for keys · double-tap to go back' : 'Double-tap to go back') : '';
-  const head = toastText() ? fit(toastText(), 566) : hint ? fit(hint, 566) : spread(name, state, 566);
-  return [head, '─'.repeat(Math.floor(566 / (getTextWidth('─') || 10))), ...rows.slice(start, start + n)].join('\n');
+  if (toastText()) return fit(toastText(), 566);
+  if (hint) return fit(hint, 566);
+  const subject = frame?.target === viewing ? frame.subject ?? '' : '';
+  const room = 566 - getTextWidth(`${name} · `) - (state ? getTextWidth(state) + 24 : 0) - 6;
+  if (!subject || room < 80) return spread(name, state, 566);
+  if (getTextWidth(subject) <= room) return spread(`${name} · ${subject}`, state, 566);
+  if (subjectSlide.text !== subject) { subjectSlide.text = subject; subjectSlide.at = Date.now(); } // reset when a view opens
+  let r = slid(subject, room, subjectSlide.at);
+  if (r.over) { subjectSlide.at = Date.now(); r = slid(subject, room, subjectSlide.at); }
+  subjectSliding = true;
+  return spread(`${name} · ${r.text}`, state, 566);
 }
 
 // Minimized: one small line top-left. In an agent's view, that agent's state and
@@ -412,13 +439,17 @@ function layout(page: Page) {
     return { containerTotalNum: 1, textObject: [text(C.mini, { xPosition: 8, yPosition: 0, width: 560, height: 28, textColor: 3, isEventCapture: 1 })] };
   }
   if (page === 'termkeys') {
-    return { containerTotalNum: 2, textObject: [
-      text(C.term, { xPosition: 0, yPosition: 0, width: 576, height: 254, isEventCapture: 1 }),
+    return { containerTotalNum: 3, textObject: [
+      text(C.head, { xPosition: 0, yPosition: 0, width: 576, height: 28 }),
+      text(C.term, { xPosition: 0, yPosition: 28, width: 576, height: 226, isEventCapture: 1 }),
       text(C.keys, { xPosition: 0, yPosition: 256, width: 576, height: 32, borderWidth: 1, borderColor: 8, borderRadius: 8, paddingLength: 2 }),
     ] };
   }
   if (page === 'term') {
-    return { containerTotalNum: 1, textObject: [text(C.term, { xPosition: 0, yPosition: 0, width: 576, height: 288, isEventCapture: 1 })] };
+    return { containerTotalNum: 2, textObject: [
+      text(C.head, { xPosition: 0, yPosition: 0, width: 576, height: 28 }),
+      text(C.term, { xPosition: 0, yPosition: 28, width: 576, height: 260, isEventCapture: 1 }),
+    ] };
   }
   const col = { xPosition: COL, width: W_ITEMS };
   return {
@@ -473,8 +504,8 @@ async function renderGlasses() {
       if (!(await bridge.rebuildPageContainer(new RebuildPageContainer(layout(want))))) throw new Error('page rebuild rejected');
       page = want; shown = {};
     }
-    const content: Record<string, Line> = want === 'mini' ? { mini: miniTag() } : want === 'term' ? { term: L(termView(), 4) }
-      : want === 'termkeys' ? { term: L(termView(), 4), keys: L(keyStrip(), 4) } : selection(crossbarView());
+    const content: Record<string, Line> = want === 'mini' ? { mini: miniTag() } : want === 'term' ? { head: L(termHead(), 4), term: L(termBody(), 4) }
+      : want === 'termkeys' ? { head: L(termHead(), 4), term: L(termBody(), 4), keys: L(keyStrip(), 4) } : selection(crossbarView());
     for (const [name, { text: value, color }] of Object.entries(content)) {
       const v = value || ' ';
       if (shown[name] === `${color}|${v}`) continue;
@@ -645,7 +676,7 @@ function connect() {
       papers = msg.papers ?? [];
     } else if (msg.type === 'crossbar-result') {
       if (!msg.ask) say(msg.ok ? msg.message : `failed: ${msg.message}`);
-      if (msg.ok && msg.view) { viewing = msg.view; scroll = 0; level = 'view'; frame = null; keymode = false; viewOpened = Date.now(); }
+      if (msg.ok && msg.view) { viewing = msg.view; scroll = 0; level = 'view'; frame = null; keymode = false; viewOpened = Date.now(); subjectSlide.text = ''; }
     } else if (msg.type === 'frame') {
       if (frame?.target !== msg.target) scroll = 0;
       frame = msg;
@@ -682,6 +713,8 @@ function connect() {
 setInterval(() => { if ((level !== 'view' && level !== 'menu' && !ask) || mini) send({ type: 'crossbar' }); }, 5000);
 // the scrolling paper title in the top bar (renders only send what changed)
 setInterval(() => { if (papers.length && (mini ? !(level !== 'menu' && isPane()) : page === 'crossbar')) renderGlasses(); }, STEP_MS);
+// an agent's subject sliding in its view's header (only the header is resent)
+setInterval(() => { if (subjectSliding && !mini && (page === 'term' || page === 'termkeys')) renderGlasses(); }, STEP_MS);
 // toasts, the clock and Ask's countdown / result
 setInterval(() => {
   if (toast.text && Date.now() > toast.until) toast = { text: '', until: 0 };
