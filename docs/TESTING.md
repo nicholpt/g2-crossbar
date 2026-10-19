@@ -17,7 +17,7 @@ CI runs the same on every push and pull request (see [CI](#ci)).
 | `test/auth.test.mjs` | Home mode's pairing code; this Mac always allowed |
 | `test/feed.test.mjs` | RSS, Atom and arXiv headline parsing |
 | `test/model.test.mjs` | The model and effort shown next to each agent |
-| `test/repo.test.mjs` | No emails, home folders or tailnet addresses in tracked files; versions and changelog in sync |
+| `test/repo.test.mjs` | No emails, home folders or tailnet addresses in tracked files; versions and changelog in sync; `docs/SBOM.md` lists every npm package at its locked version, and `npm run sbom` works |
 
 The bridge test uses `tmux -L crossbar-test` (see `test/bin/tmux-test`), so it never
 touches your own tmux sessions.
@@ -86,7 +86,8 @@ CI can't wear the glasses. Before tagging a release, on real hardware:
 
 `npm test` fails if the versions or the changelog don't line up, so step 1 and 2 can't be
 half done. The Release workflow re-runs the tests, builds `crossbar.ehpk`, and publishes it
-with a SHA-256 checksum, a signed build-provenance attestation and the changelog section as
+with a SHA-256 checksum, a signed build-provenance attestation, a CycloneDX SBOM
+(`crossbar.sbom.cdx.json`, also attested; see [SBOM](SBOM.md)) and the changelog section as
 the notes. Check a download with `gh attestation verify crossbar.ehpk --repo nicholpt/g2-crossbar`.
 
 ## CI

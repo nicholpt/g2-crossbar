@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -42,4 +42,26 @@ test('app.json, package.json and package-lock.json agree on the version', () => 
   assert.equal(lock.version, v, 'package-lock.json');
   assert.equal(lock.packages[''].version, v, 'package-lock.json packages[""]');
   assert.match(read('CHANGELOG.md'), new RegExp(`^## ${v.replaceAll('.', '\\.')}\\b`, 'm'), `CHANGELOG.md has no "## ${v}" section`);
+});
+
+test('docs/SBOM.md lists every package in package.json, at its locked version', () => {
+  const doc = read('docs/SBOM.md');
+  const pkg = JSON.parse(read('package.json'));
+  const lock = JSON.parse(read('package-lock.json'));
+  for (const name of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })) {
+    const v = lock.packages[`node_modules/${name}`].version;
+    assert.match(doc, new RegExp(`\\| \`${name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\` \\| ${v.replace(/\./g, '\\.')} \\|`), `${name} ${v}`);
+  }
+});
+
+test('the SBOM has the npm packages and the system pieces, and one Whisper model hash', () => {
+  mkdirSync(join(ROOT, '.run'), { recursive: true });
+  const out = join(ROOT, '.run', 'sbom.test.cdx.json');
+  execFileSync(process.execPath, [join(ROOT, 'bin/sbom.mjs'), out]);
+  const bom = JSON.parse(readFileSync(out, 'utf8'));
+  assert.equal(bom.bomFormat, 'CycloneDX');
+  const names = new Set(bom.components.map((c) => c.name));
+  for (const name of ['ws', '@evenrealities/even_hub_sdk', 'vite', 'Node.js', 'tmux', 'Tailscale', 'whisper.cpp']) assert.ok(names.has(name), name);
+  const model = bom.components.find((c) => c.type === 'machine-learning-model');
+  assert.ok(read('docs/SBOM.md').includes(model.hashes[0].content), 'docs/SBOM.md has the model hash bin/sbom.mjs records');
 });

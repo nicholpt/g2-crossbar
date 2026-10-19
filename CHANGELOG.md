@@ -2,6 +2,11 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
+## Unreleased
+
+- **Added:** a software bill of materials. [docs/SBOM.md](docs/SBOM.md) lists everything Crossbar ships, needs and connects to; `npm run sbom` writes it as CycloneDX JSON (npm's packages plus Node.js, tmux, Tailscale, whisper.cpp and the Whisper model with its SHA-256), and releases attach it with a signed SBOM attestation.
+- **Changed:** the docs say `brew install whisper.cpp`, Homebrew's current name (`whisper-cpp` still works).
+
 ## 1.0.5
 
 - **Fixed:** in a Claude view, the session title Claude draws into its input box's top border showed there as well as in the header. That border line is dropped, and the line goes to output.

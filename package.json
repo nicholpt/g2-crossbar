@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit -p .",
     "pretest": "vite build --logLevel error",
     "test": "node --test 'test/*.test.mjs'",
-    "capture": "node bin/capture.mjs"
+    "capture": "node bin/capture.mjs",
+    "sbom": "node bin/sbom.mjs"
   },
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.16",
