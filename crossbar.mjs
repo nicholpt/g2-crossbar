@@ -252,7 +252,7 @@ export function paneSubject(title, path = '', host = hostname()) {
   let t = title.trim().replace(/^[^\p{L}\p{N}(\[]+\s+/u, '');
   const folder = basename(path);
   if (folder && t.endsWith(` | ${folder}`)) t = t.slice(0, -` | ${folder}`.length).trimEnd();
-  if (!t || t === host || t === host.replace(/\.local$/, '') || /^(claude( code)?|codex|gemini|agy|antigravity|kimi)$/i.test(t)) return '';
+  if (!/[\p{L}\p{N}]/u.test(t) || t === host || t === host.replace(/\.local$/, '') || /^(claude( code)?|codex|gemini|agy|antigravity|kimi)$/i.test(t)) return ''; // a bare glyph or spinner too
   return t;
 }
 

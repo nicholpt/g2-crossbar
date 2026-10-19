@@ -381,12 +381,14 @@ function termBody(): string {
 // what the agent is working on (its terminal title) after the label; when that
 // doesn't fit, it alone slides sideways.
 const subjectSlide = { text: '', at: 0 };
-let subjectSliding = false;
+let subjectSliding = false; // the open view's subject is wider than its room
 function termHead(): string {
   subjectSliding = false;
-  const rows = frame && frame.target === viewing ? wrap(frame.lines, 566) : [];
-  const n = VIEW_ROWS - 2 - (keymode ? 1 : 0);
-  const pos = frame?.top && rows.length > n ? `${Math.floor(scroll / (n - 1)) + 1} of ${Math.ceil((rows.length - 1) / (n - 1))}` : '';
+  let pos = '';
+  if (frame?.top && frame.target === viewing) { // "2 of 5" for documents (agents' screens follow the bottom)
+    const rows = wrap(frame.lines, 566).length, n = VIEW_ROWS - 2 - (keymode ? 1 : 0);
+    if (rows > n) pos = `${Math.floor(scroll / (n - 1)) + 1} of ${Math.ceil((rows - 1) / (n - 1))}`;
+  }
   const d = decision();
   const name = cap(frame?.label ?? '');
   const state = isPane() ? (cat()?.id === 'agents' ? item()?.meta ?? '' : '') : pos;
@@ -398,10 +400,11 @@ function termHead(): string {
   const subject = frame?.target === viewing ? frame.subject ?? '' : '';
   const room = 566 - getTextWidth(`${name} · `) - (state ? getTextWidth(state) + 24 : 0) - 6;
   if (!subject || room < 80) return spread(name, state, 566);
-  if (subjectSlide.text !== subject) { subjectSlide.text = subject; subjectSlide.at = Date.now(); }
+  if (getTextWidth(subject) <= room) return spread(`${name} · ${subject}`, state, 566);
+  if (subjectSlide.text !== subject) { subjectSlide.text = subject; subjectSlide.at = Date.now(); } // reset when a view opens
   let r = slid(subject, room, subjectSlide.at);
   if (r.over) { subjectSlide.at = Date.now(); r = slid(subject, room, subjectSlide.at); }
-  subjectSliding = getTextWidth(subject) > room;
+  subjectSliding = true;
   return spread(`${name} · ${r.text}`, state, 566);
 }
 
@@ -673,7 +676,7 @@ function connect() {
       papers = msg.papers ?? [];
     } else if (msg.type === 'crossbar-result') {
       if (!msg.ask) say(msg.ok ? msg.message : `failed: ${msg.message}`);
-      if (msg.ok && msg.view) { viewing = msg.view; scroll = 0; level = 'view'; frame = null; keymode = false; viewOpened = Date.now(); }
+      if (msg.ok && msg.view) { viewing = msg.view; scroll = 0; level = 'view'; frame = null; keymode = false; viewOpened = Date.now(); subjectSlide.text = ''; }
     } else if (msg.type === 'frame') {
       if (frame?.target !== msg.target) scroll = 0;
       frame = msg;

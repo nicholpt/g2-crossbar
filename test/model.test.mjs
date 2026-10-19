@@ -63,5 +63,5 @@ test("an agent's subject comes from its terminal title", () => {
   assert.equal(paneSubject('Fix flaky login test | api', '/u/api', host), 'Fix flaky login test');
   assert.equal(paneSubject('Compare a | b', '/u/api', host), 'Compare a | b'); // a "|" that isn't the folder stays
   assert.equal(paneSubject('(draft) notes', '/u', host), '(draft) notes');
-  for (const none of [host, 'studio', 'claude', 'Claude Code', 'codex', '  ', '']) assert.equal(paneSubject(none, '/u', host), '', JSON.stringify(none));
+  for (const none of [host, 'studio', 'claude', 'Claude Code', 'codex', '✳', '⠂', '  ', '']) assert.equal(paneSubject(none, '/u', host), '', JSON.stringify(none));
 });
