@@ -99,8 +99,15 @@ function scheduleFeeds() {
 scheduleFeeds();
 
 // --- setup screen: what the phone may read and change -------------------------------
+// offered on the phone's setup screen (the bridge fetches feeds, not the app)
+const FEED_PRESETS = [
+  ['AI papers (arXiv)', FEED_DEFAULTS.urls[0]],
+  ['Hacker News', 'https://hnrss.org/frontpage'],
+  ['The Verge', 'https://www.theverge.com/rss/index.xml'],
+  ['BBC News', 'https://feeds.bbci.co.uk/news/rss.xml'],
+];
 function setupInfo() {
-  return { type: 'setup', version: VERSION, mode: MODE, ...addresses(), port: PORT, owner: OWNER, feed: feedSettings(), whisper: !!process.env.WHISPER_MODEL || existsSync(join(import.meta.dirname, 'models')) };
+  return { type: 'setup', version: VERSION, mode: MODE, ...addresses(), port: PORT, owner: OWNER, feed: feedSettings(), presets: FEED_PRESETS, whisper: !!process.env.WHISPER_MODEL || existsSync(join(import.meta.dirname, 'models')) };
 }
 function saveFeed(feed) {
   const urls = (Array.isArray(feed?.urls) ? feed.urls : []).map((u) => String(u).trim()).filter((u) => /^https?:\/\//.test(u)).slice(0, 10);

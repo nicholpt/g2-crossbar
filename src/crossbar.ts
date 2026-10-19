@@ -892,12 +892,8 @@ async function initGlasses() {
 
 // --- setup screen (phone) -------------------------------------------------------------
 // Address of the bridge, a connection test, and the top-line feed (stored on the Mac).
-const FEED_PRESETS: [string, string][] = [
-  ['AI papers (arXiv)', 'https://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=40'],
-  ['Hacker News', 'https://hnrss.org/frontpage'],
-  ['The Verge', 'https://www.theverge.com/rss/index.xml'],
-  ['BBC News', 'https://feeds.bbci.co.uk/news/rss.xml'],
-];
+// The feed suggestions come from the bridge, which fetches the feeds: this app
+// itself only ever talks to the bridge, so no other URL is in it.
 function setupState(text: string, kind: '' | 'ok' | 'bad' = '') {
   const el = $('setupstate');
   el.textContent = text;
@@ -912,7 +908,7 @@ function openSetup() {
   else setupState(needsSetup() ? '' : `Not connected to ${wsUrl()}`, needsSetup() ? '' : 'bad');
 }
 function onSetupInfo(msg: { version: string; mode: string; dns?: string; local?: string; port: number; owner: string; saved?: boolean;
-  feed: { urls: string[]; minutes: number } }) {
+  feed: { urls: string[]; minutes: number }; presets?: [string, string][] }) {
   setupState(msg.saved ? 'Feed saved' : `Connected to ${msg.dns ?? msg.local ?? 'your Mac'}`, 'ok');
   $('setupinfo').textContent = `Bridge ${msg.version} · ${msg.mode === 'home' ? 'home network, paired' : `Tailscale, ${msg.owner}'s devices only`}`;
   $('feedpart').hidden = false;
@@ -920,6 +916,16 @@ function onSetupInfo(msg: { version: string; mode: string; dns?: string; local?:
     ($('feedurls') as HTMLTextAreaElement).value = msg.feed.urls.join('\n');
     ($('feedmin') as HTMLInputElement).value = String(msg.feed.minutes);
   }
+  $('feedpresets').replaceChildren(...(msg.presets ?? []).map(([name, url]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = `+ ${name}`;
+    b.addEventListener('click', () => {
+      const t = $('feedurls') as HTMLTextAreaElement;
+      if (!t.value.includes(url)) t.value = `${t.value.trim()}\n${url}`.trim();
+    });
+    return b;
+  }));
 }
 async function saveAddress(addr: string, key: string) {
   saved = hostOf(addr);
@@ -948,16 +954,6 @@ $('setupform').addEventListener('submit', async (e) => {
   clearTimeout(retry);
   connect();
 });
-for (const [name, url] of FEED_PRESETS) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.textContent = `+ ${name}`;
-  b.addEventListener('click', () => {
-    const t = $('feedurls') as HTMLTextAreaElement;
-    if (!t.value.includes(url)) t.value = `${t.value.trim()}\n${url}`.trim();
-  });
-  $('feedpresets').append(b);
-}
 $('feedsave').addEventListener('click', () => {
   const urls = ($('feedurls') as HTMLTextAreaElement).value.split(/\s+/).filter(Boolean);
   const bad = urls.find((u) => !/^https?:\/\//.test(u));

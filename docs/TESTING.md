@@ -12,13 +12,13 @@ CI runs the same on every push and pull request (see [CI](#ci)).
 | File | Covers |
 | --- | --- |
 | `test/screens.test.mjs` | Prompt detection and "what the agent said" on real-layout screens from each harness |
-| `test/bridge.test.mjs` | The real bridge with a fake agent in a private tmux server: alert → view → answer moves the agent's own cursor and presses Enter; stale prompts refused; keys only to the viewed pane; unknown keys refused; feeds saved twice quickly keep the later list |
+| `test/bridge.test.mjs` | The real bridge with a fake agent in a private tmux server: alert → view → answer moves the agent's own cursor and presses Enter; stale prompts refused; keys only to the viewed pane; unknown keys refused; feeds saved twice quickly keep the later list; the setup screen's feed suggestions come from the bridge |
 | `test/address.test.mjs` | Which addresses the phone app will connect to |
 | `test/auth.test.mjs` | Home mode's pairing code; this Mac always allowed |
 | `test/locale.test.mjs` | With no locale (as at login), commands the bridge runs still get tabs and `❯` from tmux |
 | `test/feed.test.mjs` | RSS, Atom and arXiv headline parsing |
 | `test/model.test.mjs` | The model and effort shown next to each agent |
-| `test/repo.test.mjs` | No emails, home folders or tailnet addresses in tracked files; versions and changelog in sync; `docs/SBOM.md` lists every npm package at its locked version, and `npm run sbom` works |
+| `test/repo.test.mjs` | No emails, home folders or tailnet addresses in tracked files; versions and changelog in sync; `docs/SBOM.md` lists every npm package at its locked version, and `npm run sbom` works; the built app names no URL |
 
 The bridge test uses `tmux -L crossbar-test` (see `test/bin/tmux-test`), so it never
 touches your own tmux sessions.
