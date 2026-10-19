@@ -123,6 +123,7 @@ for _ in 1 2 3 4 5; do launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null &
 for _ in $(seq 1 20); do curl -s -o /dev/null -m 1 "http://127.0.0.1:$PORT/" && break; sleep 0.5; done
 curl -s -o /dev/null -m 2 "http://127.0.0.1:$PORT/" || die "the bridge didn't start: see $ROOT/.run/crossbar.log"
 ok "bridge running on port $PORT, $MODE mode (log: .run/crossbar.log)"
+[[ $PORT == 8787 ]] || warn "the glasses app only connects on port 8787; port $PORT works from a browser on this Mac (http://localhost:$PORT)"
 
 bold "4. Glasses app"
 # A personal package: its network whitelist names this Mac, and it connects

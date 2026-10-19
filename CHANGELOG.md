@@ -2,6 +2,10 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
+## Unreleased
+
+- **Security:** the phone app connects only to addresses in its `network.whitelist`: `*.ts.net`, Tailscale IPs and `*.local`, on port 8787. It no longer accepts `localhost` or another port on the setup screen (the simulator's `?ws=` is unchanged), and `bin/setup` warns when the bridge runs on another port.
+
 ## 1.0.8
 
 - **Security:** the app only follows a `?ws=` link parameter to a bridge on the same machine (it's for the simulator), so a link can't point it at someone else's server.

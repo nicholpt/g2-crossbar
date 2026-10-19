@@ -92,7 +92,7 @@ the top-right of the phone app.
 
 The setup screen accepts only addresses that can be your Mac: a `*.ts.net` name, a
 Tailscale IP (`100.64.0.0` to `100.127.255.255`, or `fd7a:115c:a1e0:…`), a `*.local`
-name, or `localhost`. Add `:port` if you changed the port.
+name. Always port 8787, the only port in the app's network whitelist.
 
 A home-mode personal build already knows the address but never the pairing code, so it
 asks for the code once.
@@ -171,5 +171,6 @@ differently.
 **Spotify says it needs permission.** See *Music* above; the approval prompt appears on
 the Mac's screen.
 
-**Port 8787 is taken.** Run setup with another port, e.g. `CROSSBAR_PORT=8797 bin/setup`, and
-enter the address with the port (`my-mac.ts.net:8797`) on the setup screen.
+**Port 8787 is taken.** The glasses app only connects on 8787 (its network whitelist),
+so free it: `lsof -nP -iTCP:8787 -sTCP:LISTEN` shows what has it. Another port
+(`CROSSBAR_PORT=8797 bin/setup`) works only from a browser or the simulator on the Mac.

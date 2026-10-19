@@ -955,7 +955,7 @@ $('setupform').addEventListener('submit', async (e) => {
   e.preventDefault();
   const addr = ($('setupaddr') as HTMLInputElement).value;
   const key = ($('setupcode') as HTMLInputElement).value;
-  if (!toWs(addr, key)) return setupState('Use your Mac\'s Tailscale name (….ts.net) or IP (100.x.y.z), its home name (….local) or localhost', 'bad');
+  if (!toWs(addr, key)) return setupState('Use your Mac\'s Tailscale name (….ts.net) or IP (100.x.y.z), or its home name (….local)', 'bad');
   if (isHome(addr) && !key.trim()) return setupState('Enter the pairing code bin/setup --home printed', 'bad');
   await saveAddress(addr, key);
   setupState(`Connecting to ${hostOf(addr)}…`);
