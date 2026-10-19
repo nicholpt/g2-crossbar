@@ -2,7 +2,7 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
-## Unreleased
+## 1.0.7
 
 - **Fixed:** re-running `bin/setup` could leave the bridge stopped ("Bootstrap failed: 5: Input/output error"): launchd hadn't finished removing the old one. Setup now waits for it, retries, and says so if launchd still refuses.
 
