@@ -14,22 +14,29 @@ jobs:
   release:
     runs-on: macos-latest
     timeout-minutes: 20
+    environment: release # deployable from v* tags only (repo settings)
     permissions:
       contents: write     # create the release
       id-token: write     # sign the provenance attestation
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # main's history, for the check below
+          persist-credentials: false # gh uses GH_TOKEN; nothing else may push
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
-          cache: npm
+          node-version: 24 # no npm cache: the release installs fresh from the registry
+      - name: Tag is on main
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "$GITHUB_REF_NAME ($GITHUB_SHA) isn't on main"; exit 1; }
       - name: Tag matches the version
         run: |
           v=$(node -p 'require("./app.json").version')
           [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME but app.json says $v"; exit 1; }
       - run: brew install tmux
       - run: npm ci
+      - run: npm audit signatures # every package's registry signature and provenance
       - run: npm test # includes: package.json, the lockfile and CHANGELOG.md agree with app.json
       - run: npm run pack
       - name: Checksum

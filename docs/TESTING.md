@@ -86,7 +86,10 @@ CI can't wear the glasses. Before tagging a release, on real hardware:
    ```
 
 `npm test` fails if the versions or the changelog don't line up, so step 1 and 2 can't be
-half done. The Release workflow re-runs the tests, builds `crossbar.ehpk`, and publishes it
+half done. The tag must be on `main` (merged through a pull request), or the release
+stops. The Release workflow runs in the `release` environment (only `v*` tags may deploy
+to it), installs fresh from the registry (no cache), checks every package's registry
+signature (`npm audit signatures`), re-runs the tests, builds `crossbar.ehpk`, and publishes it
 with a SHA-256 checksum, a signed build-provenance attestation, a CycloneDX SBOM
 (`crossbar.sbom.cdx.json`, also attested; see [SBOM](SBOM.md)) and the changelog section as
 the notes. Check a download with `gh attestation verify crossbar.ehpk --repo nicholpt/g2-crossbar`.
@@ -101,4 +104,9 @@ Every push and pull request runs, on GitHub Actions:
 - **ShellCheck** on the shell scripts.
 - **CodeQL** static analysis (also weekly).
 
-Dependabot opens grouped update PRs weekly for npm packages and the pinned actions.
+Dependabot opens grouped update PRs weekly for npm packages and the pinned actions, and
+security update PRs as advisories appear.
+
+`main` only takes pull requests whose checks all pass, and release tags (`v*`) can only be
+created by the repo's admin and never moved or deleted (repository rulesets). Actions must
+be pinned to a commit SHA, and no workflow keeps git credentials after checkout.
