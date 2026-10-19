@@ -2,7 +2,7 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
-## Unreleased
+## 1.0.8
 
 - **Security:** the app only follows a `?ws=` link parameter to a bridge on the same machine (it's for the simulator), so a link can't point it at someone else's server.
 - **Security:** hardening from code scanning: names from the bridge (categories, icons) can no longer reach built-in object properties; the bridge reads a file once instead of checking it first, and serves nothing outside its own folder (`dist` no longer matches a sibling like `dist-pack`); feed titles have tags stripped until none are left; feed URLs read from `crossbar.json` must be http(s).
