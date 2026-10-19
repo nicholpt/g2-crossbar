@@ -49,8 +49,12 @@ const address = () => saved || BUILT;
 // ?ws= is for the simulator and development: only a bridge on this machine, so a
 // link can't point the app at someone else's server
 const devWs = (() => {
-  const w = params.get('ws') || '';
-  try { return /^wss?:$/.test(new URL(w).protocol) && ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(w).hostname) ? w : ''; } catch { return ''; }
+  try { // rebuilt from known parts: one of these hosts, a port number, /ws
+    const u = new URL(params.get('ws') || '');
+    const host = ['127.0.0.1', 'localhost', '[::1]'].find((h) => h === u.hostname);
+    const port = Number(u.port);
+    return host && Number.isInteger(port) && port > 0 && port < 65536 ? `${u.protocol === 'wss:' ? 'wss' : 'ws'}://${host}:${port}/ws` : '';
+  } catch { return ''; }
 })();
 const wsUrl = () => devWs || (served ? `ws://${location.host}/ws` : toWs(address()));
 // nothing to connect to yet, or a home-network Mac without its pairing code
