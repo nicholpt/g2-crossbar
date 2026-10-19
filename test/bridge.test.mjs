@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { createServer } from 'node:http';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 
@@ -123,4 +124,31 @@ test('unknown keys are refused', { skip, timeout: 15_000 }, async () => {
   assert.equal(r.ok, false);
   assert.match(r.message, /unknown key/);
   c.ws.close();
+});
+
+test('feeds saved twice quickly: the later save wins, even when the first fetch ends last', { skip, timeout: 15_000 }, async (t) => {
+  // A is slow the first time only: the first save's fetch (A) finishes after the second's (A + B)
+  let firstA = true;
+  const rss = (name) => `<rss><channel><title>${name}</title><item><title>${name} headline</title></item></channel></rss>`;
+  const feeds = createServer((req, res) => {
+    const name = req.url.slice(1);
+    const delay = name === 'A' && firstA ? 2000 : 0;
+    if (name === 'A') firstA = false;
+    setTimeout(() => res.end(rss(name)), delay);
+  });
+  await new Promise((r) => feeds.listen(0, '127.0.0.1', r));
+  t.after(() => feeds.close());
+  const base = `http://127.0.0.1:${feeds.address().port}`;
+  const c = client();
+  await c.open;
+  c.send({ type: 'setup-feed', feed: { urls: [`${base}/A`], minutes: 30 } });
+  c.send({ type: 'setup-feed', feed: { urls: [`${base}/A`, `${base}/B`], minutes: 30 } });
+  await new Promise((r) => setTimeout(r, 3500)); // both fetches are done
+  c.ws.close();
+  const later = client(); // a new client: the list as it stands now, not the broadcasts on the way
+  await later.open;
+  later.send({ type: 'papers' });
+  const { papers } = await later.next((m) => m.type === 'papers');
+  assert.deepEqual(papers.map((p) => p.title).sort(), ['A headline', 'B headline']);
+  later.ws.close();
 });

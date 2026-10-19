@@ -78,13 +78,16 @@ const FEED_DEFAULTS = {
 const readSettings = () => { try { return JSON.parse(readFileSync(SETTINGS, 'utf8')); } catch { return {}; } };
 const feedSettings = () => ({ ...FEED_DEFAULTS, ...readSettings().feed });
 let papers = []; // { title, source } (named for the arXiv default; any feed's items)
+let feedRun = 0; // fetches overlap (feeds saved twice quickly): only the newest may set papers
 async function fetchFeeds() {
+  const run = ++feedRun;
   const { urls, max } = feedSettings();
   const lists = await Promise.all(urls.map((u) => fetch(u, { signal: AbortSignal.timeout(30_000) })
     .then((r) => r.text()).then(parseFeed).catch((e) => { console.log(`[feed] ${u}: ${e.message}`); return []; })));
   // interleave feeds so one busy feed doesn't drown the others
   const next = [];
   for (let i = 0; next.length < max && lists.some((l) => l[i]); i++) for (const l of lists) if (l[i] && next.length < max) next.push(l[i]);
+  if (run !== feedRun) return; // settings changed while this one was fetching
   if (next.length || !urls.length) { papers = next; broadcast({ type: 'papers', papers }); }
 }
 let feedTimer;
