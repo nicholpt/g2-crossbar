@@ -244,6 +244,28 @@ export function withoutModelLine(agent, screen) {
   return i < 0 ? screen : [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n');
 }
 
+// Claude Code's footer: its context size ("41622 tokens") and update notices
+// ("current: 2.1.302 · latest: 2.1.303 ✔ Update installed · Restart to update",
+// "Update available! Run: claude update"). Both sit right-aligned, after a long
+// run of spaces, so a reply line (indented 2) or the working line "(12s · 3.4k
+// tokens · esc to interrupt)" never matches.
+const CLAUDE_STATUS = /\s{8,}(?:\d[\d,.]*k? tokens(?=\s*$|\s+·\s+(?:current:|[✔✓✗]|Update|Auto-update))|current: \S+ · latest: |[✔✓✗]?\s*(?:Update available! Run: claude update|Update installed · Restart to update|Auto-update failed))/;
+// The pane view without that footer text: it isn't the agent's output, and
+// dropping it frees a line. Only the last 8 non-blank lines are looked at.
+export function withoutClaudeStatus(screen) {
+  const lines = screen.split('\n');
+  for (let i = lines.length - 1, seen = 0; i >= 0 && seen < 8; i--) {
+    if (!lines[i].trim()) continue;
+    seen++;
+    const at = lines[i].search(CLAUDE_STATUS);
+    if (at < 0) continue;
+    const rest = lines[i].slice(0, at).trimEnd();
+    if (rest.trim()) lines[i] = rest;
+    else lines.splice(i, 1);
+  }
+  return lines.join('\n');
+}
+
 // Claude Code: the model of the newest reply in the newest session started in
 // this folder (~/.claude/projects/<folder with - for />/*.jsonl), and the
 // effort level from its settings
@@ -508,7 +530,8 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
       if (!agent) return { label: name || pane, lines: clean(body), decision: parseDecision(body) ?? undefined };
       // "codex - GPT-6.1-Sol ultra · ~/Documents" in the header, so its own footer line can go
       const label = `${agent} - ${[modelOf({ id: pane, agent, path, screen: body }), path.replace(HOME, '~')].filter(Boolean).join(' · ')}`;
-      return { label, lines: clean(withoutModelLine(agent, body)), decision: parseDecision(body) ?? undefined };
+      const shown = agent === 'claude' ? withoutClaudeStatus(body) : withoutModelLine(agent, body);
+      return { label, lines: clean(shown), decision: parseDecision(body) ?? undefined };
     }
     if (id === 'vitals') return vitals();
     if (id === 'music') {
