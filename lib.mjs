@@ -13,6 +13,12 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { timingSafeEqual, createHash } from 'node:crypto';
 
+// tmux writes "_" for tabs and for non-ASCII ("❯", "─", "✳") unless the locale is
+// UTF-8, and a LaunchAgent has no locale at all: give every command run from here one.
+if (!/utf-?8/i.test(process.env.LC_ALL || process.env.LC_CTYPE || process.env.LANG || '')) {
+  process.env.LC_ALL = process.platform === 'darwin' ? 'en_US.UTF-8' : 'C.UTF-8';
+}
+
 export const MODE = process.env.CROSSBAR_MODE === 'home' ? 'home' : 'tailscale';
 export const TMUX = process.env.CROSSBAR_TMUX || findBin('tmux', ['/opt/homebrew/bin/tmux', '/usr/local/bin/tmux']);
 const TAILSCALE = process.env.TAILSCALE_BIN || findBin('tailscale', ['/opt/homebrew/bin/tailscale', '/usr/local/bin/tailscale',

@@ -15,6 +15,7 @@ CI runs the same on every push and pull request (see [CI](#ci)).
 | `test/bridge.test.mjs` | The real bridge with a fake agent in a private tmux server: alert → view → answer moves the agent's own cursor and presses Enter; stale prompts refused; keys only to the viewed pane; unknown keys refused |
 | `test/address.test.mjs` | Which addresses the phone app will connect to |
 | `test/auth.test.mjs` | Home mode's pairing code; this Mac always allowed |
+| `test/locale.test.mjs` | With no locale (as at login), commands the bridge runs still get tabs and `❯` from tmux |
 | `test/feed.test.mjs` | RSS, Atom and arXiv headline parsing |
 | `test/model.test.mjs` | The model and effort shown next to each agent |
 | `test/repo.test.mjs` | No emails, home folders or tailnet addresses in tracked files; versions and changelog in sync; `docs/SBOM.md` lists every npm package at its locked version, and `npm run sbom` works |

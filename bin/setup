@@ -81,6 +81,7 @@ bold "3. Bridge (starts at login, restarts if it stops)"
 mkdir -p .run "$HOME/Library/LaunchAgents"
 NODE="$(command -v node)"
 ENVS="    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>LANG</key><string>en_US.UTF-8</string>
     <key>CROSSBAR_MODE</key><string>$MODE</string>
     <key>CROSSBAR_PORT</key><string>$PORT</string>"
 [[ -n "$TS" ]] && ENVS+="
