@@ -298,5 +298,10 @@
       ],
       "cursor": 0
     }
+  },
+  "claude-idle-update-notice": {
+    "state": "idle",
+    "decision": null,
+    "lastLine": "Terminal multiplexers like tmux and GNU Screen let you run many terminal sessions inside one window and keep them alive on their own, separa"
   }
 }

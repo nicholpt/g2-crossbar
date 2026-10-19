@@ -4,7 +4,7 @@
 // on the Mac); actions only resolve against the latest scan, so clients can
 // only ask for things the catalog itself offered.
 import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, openSync, readSync, closeSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { join, basename, dirname } from 'node:path';
 import { clean } from './text.mjs';
 
@@ -242,6 +242,40 @@ export function withoutModelLine(agent, screen) {
   const lines = screen.split('\n');
   const i = modelLineAt(agent, lines);
   return i < 0 ? screen : [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n');
+}
+
+// What the agent says it's working on, from the terminal title it sets:
+// Claude "✳ deepseek disk space cleanup", Codex "⠋ Enable YOLO mode | Documents".
+// Without its status glyph or spinner and Codex's "| folder" (the header shows
+// the folder); tmux's default title (the host name) or a bare agent name is no subject.
+export function paneSubject(title, path = '', host = hostname()) {
+  let t = title.trim().replace(/^[^\p{L}\p{N}(\[]+\s+/u, '');
+  const folder = basename(path);
+  if (folder && t.endsWith(` | ${folder}`)) t = t.slice(0, -` | ${folder}`.length).trimEnd();
+  if (!/[\p{L}\p{N}]/u.test(t) || t === host || t === host.replace(/\.local$/, '') || /^(claude( code)?|codex|gemini|agy|antigravity|kimi)$/i.test(t)) return ''; // a bare glyph or spinner too
+  return t;
+}
+
+// Claude Code's footer: its context size ("41622 tokens") and update notices
+// ("current: 2.1.302 · latest: 2.1.303 ✔ Update installed · Restart to update",
+// "Update available! Run: claude update"). Both sit right-aligned, after a long
+// run of spaces, so a reply line (indented 2) or the working line "(12s · 3.4k
+// tokens · esc to interrupt)" never matches.
+const CLAUDE_STATUS = /\s{8,}(?:\d[\d,.]*k? tokens(?=\s*$|\s+·\s+(?:current:|[✔✓✗]|Update|Auto-update))|current: \S+ · latest: |[✔✓✗]?\s*(?:Update available! Run: claude update|Update installed · Restart to update|Auto-update failed))/;
+// The pane view without that footer text: it isn't the agent's output, and
+// dropping it frees a line. Only the last 8 non-blank lines are looked at.
+export function withoutClaudeStatus(screen) {
+  const lines = screen.split('\n');
+  for (let i = lines.length - 1, seen = 0; i >= 0 && seen < 8; i--) {
+    if (!lines[i].trim()) continue;
+    seen++;
+    const at = lines[i].search(CLAUDE_STATUS);
+    if (at < 0) continue;
+    const rest = lines[i].slice(0, at).trimEnd();
+    if (rest.trim()) lines[i] = rest;
+    else lines.splice(i, 1);
+  }
+  return lines.join('\n');
 }
 
 // Claude Code: the model of the newest reply in the newest session started in
@@ -500,15 +534,17 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
   async function view(id) {
     if (id.startsWith('pane:')) {
       const pane = id.slice(5);
-      const out = await run(`T=${tmux}; $T display -p -t ${sq(pane)} '#{window_name}\t#{pane_current_path}' 2>/dev/null || echo __GONE__; echo __G2__; $T capture-pane -p -J -t ${sq(pane)} -S -300 2>/dev/null; true`);
+      const out = await run(`T=${tmux}; $T display -p -t ${sq(pane)} '#{window_name}\t#{pane_current_path}\t#{pane_title}' 2>/dev/null || echo __GONE__; echo __G2__; $T capture-pane -p -J -t ${sq(pane)} -S -300 2>/dev/null; true`);
       const [head, body = ''] = out.split('__G2__\n');
       if (head.includes('__GONE__')) return { label: `${pane} (closed)`, lines: ['That pane has closed.'] };
-      const [name, path = ''] = head.trim().split('\t');
+      const [name, path = '', ...title] = head.replace(/\n$/, '').split('\t');
       const agent = watch.get(pane)?.agent;
       if (!agent) return { label: name || pane, lines: clean(body), decision: parseDecision(body) ?? undefined };
       // "codex - GPT-6.1-Sol ultra · ~/Documents" in the header, so its own footer line can go
       const label = `${agent} - ${[modelOf({ id: pane, agent, path, screen: body }), path.replace(HOME, '~')].filter(Boolean).join(' · ')}`;
-      return { label, lines: clean(withoutModelLine(agent, body)), decision: parseDecision(body) ?? undefined };
+      const shown = agent === 'claude' ? withoutClaudeStatus(body) : withoutModelLine(agent, body);
+      const subject = paneSubject(title.join('\t'), path) || undefined; // slides by itself in the header when it doesn't fit
+      return { label, subject, lines: clean(shown), decision: parseDecision(body) ?? undefined };
     }
     if (id === 'vitals') return vitals();
     if (id === 'music') {
