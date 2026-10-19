@@ -2,6 +2,10 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
+## Unreleased
+
+- **Fixed:** re-running `bin/setup` could leave the bridge stopped ("Bootstrap failed: 5: Input/output error"): launchd hadn't finished removing the old one. Setup now waits for it, retries, and says so if launchd still refuses.
+
 ## 1.0.6
 
 - **Fixed:** saving feeds twice in a row (adding one, then another) could leave only the first save's feeds on the glasses until the next refresh: its fetch could finish last and replace the newer list. Only the newest fetch updates the list now.
