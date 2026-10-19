@@ -540,11 +540,12 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
       const [name, path = '', ...title] = head.replace(/\n$/, '').split('\t');
       const agent = watch.get(pane)?.agent;
       if (!agent) return { label: name || pane, lines: clean(body), decision: parseDecision(body) ?? undefined };
-      // "codex - GPT-6.1-Sol ultra · ~/Documents" in the header, so its own footer line can go
-      const label = `${agent} - ${[modelOf({ id: pane, agent, path, screen: body }), path.replace(HOME, '~')].filter(Boolean).join(' · ')}`;
+      // the header: "codex - GPT-6.1-Sol ultra" (so its own footer line can go), then the folder and subject
+      const model = modelOf({ id: pane, agent, path, screen: body });
+      const label = model ? `${agent} - ${model}` : agent;
       const shown = agent === 'claude' ? withoutClaudeStatus(body) : withoutModelLine(agent, body);
-      const subject = paneSubject(title.join('\t'), path) || undefined; // slides by itself in the header when it doesn't fit
-      return { label, subject, lines: clean(shown), decision: parseDecision(body) ?? undefined };
+      const subject = paneSubject(title.join('\t'), path) || undefined;
+      return { label, folder: path.replace(HOME, '~') || undefined, subject, lines: clean(shown), decision: parseDecision(body) ?? undefined };
     }
     if (id === 'vitals') return vitals();
     if (id === 'music') {

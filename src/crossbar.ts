@@ -26,7 +26,7 @@ type Action = { id: string; label: string; confirm?: boolean; needs?: 'mic' | 'c
 type Item = { id: string; label: string; sub: string; meta?: string; live?: boolean; actions: Action[] };
 type Cat = { id: string; label: string; icon: string; items: Item[] };
 type Decision = { question: string; options: { label: string }[]; cursor: number; sig: string };
-type Frame = { type: 'frame'; target: string; label: string; subject?: string; lines: string[]; top?: boolean; decision?: Decision };
+type Frame = { type: 'frame'; target: string; label: string; folder?: string; subject?: string; lines: string[]; top?: boolean; decision?: Decision };
 type Alert = { pane: string; agent: string; kind: 'approval' | 'finished'; text?: string };
 type Ask = { state: string; agent?: string; text?: string; until: number };
 type Level = 'bar' | 'items' | 'menu' | 'view' | 'answer';
@@ -378,19 +378,10 @@ function termBody(): string {
   return ['─'.repeat(Math.floor(566 / (getTextWidth('─') || 10))), ...rows.slice(start, start + n)].join('\n');
 }
 // "Claude - Opus 5.5 high · ~/Documents · tidy the release notes     Idle":
-// what the agent is working on (its terminal title) after the label. When
-// both don't fit beside the state, they share the room (each up to about
-// half) and whichever overflows its own part slides sideways in it.
-const headSlides = { name: { text: '', at: 0 }, subject: { text: '', at: 0 } };
-let headSliding = false; // part of the open view's header is sliding
-function slideIn(sl: { text: string; at: number }, text: string, room: number): string {
-  if (getTextWidth(text) <= room) return text;
-  if (sl.text !== text) { sl.text = text; sl.at = Date.now(); } // reset when a view opens
-  let r = slid(text, room, sl.at);
-  if (r.over) { sl.at = Date.now(); r = slid(text, room, sl.at); }
-  headSliding = true;
-  return r.text;
-}
+// the agent, model and effort stay put; its folder and what it's working on
+// (its terminal title) follow, and slide sideways together when they don't fit.
+const headSlide = { text: '', at: 0 };
+let headSliding = false; // the open view's folder and subject are sliding
 function termHead(): string {
   headSliding = false;
   let pos = '';
@@ -406,14 +397,16 @@ function termHead(): string {
     : Date.now() - viewOpened < 3500 ? (isPane() ? 'Tap for keys · double-tap to go back' : 'Double-tap to go back') : '';
   if (toastText()) return fit(toastText(), 566);
   if (hint) return fit(hint, 566);
-  const subject = frame?.target === viewing ? frame.subject ?? '' : '';
-  if (!subject) return spread(name, state, 566);
-  const room = 566 - (state ? getTextWidth(state) + 24 : 0) - getTextWidth(' · ') - 6;
-  const nw = getTextWidth(name), sw = getTextWidth(subject);
-  const nameRoom = nw + sw <= room ? nw : Math.min(nw, Math.max(room / 2, room - sw));
-  // a sliding name is padded to its part, so the subject doesn't move with it
-  const left = nw > nameRoom ? `${padTo(slideIn(headSlides.name, name, nameRoom), nameRoom)}· ` : `${name} · `;
-  return spread(left + slideIn(headSlides.subject, subject, room - nameRoom), state, 566);
+  const subject = frame?.subject ?? '';
+  const rest = frame?.target === viewing ? [frame.folder, subject].filter(Boolean).join(' · ') : '';
+  const room = 566 - (state ? getTextWidth(state) + 24 : 0) - getTextWidth(`${name} · `) - 6;
+  if (!rest || room < 40) return spread(name, state, 566);
+  if (getTextWidth(rest) <= room) return spread(`${name} · ${rest}`, state, 566);
+  if (headSlide.text !== rest) { headSlide.text = rest; headSlide.at = Date.now(); } // reset when a view opens
+  let r = slid(rest, room, headSlide.at);
+  if (r.over) { headSlide.at = Date.now(); r = slid(rest, room, headSlide.at); }
+  headSliding = true;
+  return spread(`${name} · ${r.text}`, state, 566);
 }
 
 // Minimized: the bottom-left quarter of the display. Its bottom line is the
@@ -710,7 +703,7 @@ function connect() {
       papers = msg.papers ?? [];
     } else if (msg.type === 'crossbar-result') {
       if (!msg.ask) say(msg.ok ? msg.message : `failed: ${msg.message}`);
-      if (msg.ok && msg.view) { viewing = msg.view; scroll = 0; level = 'view'; frame = null; keymode = false; viewOpened = Date.now(); headSlides.name.text = headSlides.subject.text = ''; }
+      if (msg.ok && msg.view) { viewing = msg.view; scroll = 0; level = 'view'; frame = null; keymode = false; viewOpened = Date.now(); headSlide.text = ''; }
     } else if (msg.type === 'frame') {
       if (frame?.target !== msg.target) scroll = 0;
       frame = msg;
