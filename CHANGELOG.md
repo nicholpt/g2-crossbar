@@ -4,7 +4,7 @@ The Release workflow publishes the section for the tagged version as the release
 
 ## Unreleased
 
-- **Fixed:** an agent's subject was dropped from its header when the name, model, folder and state left under 80 px (often, with a long model or folder), and squeezed to a few characters otherwise. The two parts now share the room, each up to about half, and whichever doesn't fit its part slides sideways in it.
+- **Fixed:** an agent's subject was dropped from its header when the name, model, folder and state left under 80 px (often, with a long model or folder). Now the agent, model and effort stay put, and the folder and subject follow, sliding sideways together when they don't fit: `Claude - Opus 5.5 xhigh · ~/g2-term · tidy the release notes`.
 
 ## 1.0.3
 
