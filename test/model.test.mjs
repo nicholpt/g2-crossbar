@@ -50,6 +50,7 @@ test("Claude's pane view drops its token count and update notices", () => {
   }
   // the rest of a shared line stays; a reply that mentions tokens is left alone
   const footer = '  ⏵⏵ accept edits on (shift+tab to cycle)            41622 tokens · Update available! Run: claude update';
-  const reply = '● We cut the prompt to 4000 tokens';
-  assert.equal(withoutClaudeStatus(`${reply}\n\n${footer}`), `${reply}\n\n  ⏵⏵ accept edits on (shift+tab to cycle)`);
+  const reply = '● We cut the prompt to 4000 tokens, and the wrapped\n  4000 tokens line after it\n  Update available for the lib, said the changelog';
+  const working = '✻ Working… (12s · 3.4k tokens · esc to interrupt)';
+  assert.equal(withoutClaudeStatus(`${reply}\n${working}\n\n${footer}`), `${reply}\n${working}\n\n  ⏵⏵ accept edits on (shift+tab to cycle)`);
 });

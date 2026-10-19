@@ -246,9 +246,10 @@ export function withoutModelLine(agent, screen) {
 
 // Claude Code's footer: its context size ("41622 tokens") and update notices
 // ("current: 2.1.302 · latest: 2.1.303 ✔ Update installed · Restart to update",
-// "Update available! Run: claude update"). Only at the end of a line or before
-// a "·", so a reply that mentions tokens is left alone.
-const CLAUDE_STATUS = /(?:^|\s{2,}|\s·\s+)(?:\d[\d,.]*k? tokens(?=\s*$|\s+·)|current: \S+ · latest: |[✔✓✗]?\s*(?:Update (?:available|installed)|Restart to update|Auto-update failed))/i;
+// "Update available! Run: claude update"). Both sit right-aligned, after a long
+// run of spaces, so a reply line (indented 2) or the working line "(12s · 3.4k
+// tokens · esc to interrupt)" never matches.
+const CLAUDE_STATUS = /\s{8,}(?:\d[\d,.]*k? tokens(?=\s*$|\s+·\s+(?:current:|[✔✓✗]|Update|Auto-update))|current: \S+ · latest: |[✔✓✗]?\s*(?:Update available! Run: claude update|Update installed · Restart to update|Auto-update failed))/;
 // The pane view without that footer text: it isn't the agent's output, and
 // dropping it frees a line. Only the last 8 non-blank lines are looked at.
 export function withoutClaudeStatus(screen) {
