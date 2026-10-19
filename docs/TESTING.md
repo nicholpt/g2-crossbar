@@ -62,8 +62,9 @@ CI can't wear the glasses. Before tagging a release, on real hardware:
 - [ ] Install the package from `bin/setup` (Tailscale) and from `bin/setup --home`; both
       connect, and the setup screen accepts the printed address (and pairing code).
 - [ ] Gestures: swipe, tap, double-tap back, long press minimizes and restores.
-- [ ] Minimized: titles slide by; swipe changes title, tap opens the paper, swipe scrolls it,
-      double-tap returns to the titles, and only long press restores.
+- [ ] Minimized: titles slide by; swipe changes title, double-tap goes to the previous one, tap
+      opens the paper, swipe scrolls it, double-tap returns to the titles, and only long
+      press restores.
 - [ ] An agent's prompt shows in Needs You; answering from the glasses picks the right
       option, for each harness you use.
 - [ ] Ask by voice: listening, the 3-second cancel window, the text arrives in the agent.

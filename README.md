@@ -67,7 +67,7 @@ From the Even Hub simulator, with demo agents and projects.
 - **Minimize**: long press shrinks everything to the bottom-left corner: the feed's
   titles sliding by over the time, agents needing you, the paper's number and the
   battery (inside an agent's view, the agent and its state instead of the time). Swipe
-  for the previous or next title; tap one to read it, and the corner (a quarter of the
+  for the previous or next title, or double-tap for the previous one; tap one to read it, and the corner (a quarter of the
   screen) fills with its title, authors and abstract. Swipe scrolls it; double-tap goes
   back to the titles. Long press again restores.
 
@@ -81,7 +81,7 @@ There's also a terminal version for the Mac itself: `npm run tui`.
 | Swipe | move |
 | Tap | open / options / do it |
 | Double-tap | back (on the top level: Even's exit dialog) |
-| Long press | minimize / restore (minimized: swipe moves along the titles or scrolls the paper, tap reads it, double-tap goes back to the titles) |
+| Long press | minimize / restore (minimized: swipe moves along the titles or scrolls the paper, tap reads it, double-tap is the previous title or, in a paper, back to the titles) |
 
 ## Requirements
 

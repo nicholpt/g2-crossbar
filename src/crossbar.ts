@@ -383,7 +383,8 @@ function termView(): string {
 // Minimized: the bottom-left quarter of the display. Its bottom line is the
 // time and how many agents need you (in an agent's view: that agent and its
 // state instead), then the paper's number and the battery. Over it, the feed's
-// titles slide by as on the top bar (swipe for the previous / next one). Tap
+// titles slide by as on the top bar (swipe for the previous / next one,
+// double-tap for the previous one). Tap
 // one to read it: the corner fills with its title, who and which category,
 // then the abstract (swipe scrolls, double-tap goes back to the titles). Alerts only
 // change the bottom line for a moment; they never reopen the full screen.
@@ -759,9 +760,15 @@ function onInput(type: OsEventTypeList | undefined) {
   type = type ?? OsEventTypeList.CLICK_EVENT; // protobuf drops CLICK (0)
   if (type === OsEventTypeList.LONG_PRESS_EVENT) { mini = !mini; reading = false; ticker.at = Date.now(); render(); return; }
   if (mini) {
-    // minimized: tap opens a paper, double-tap goes back to the titles; swipe
-    // scrolls the paper, or moves along the titles. Only long press restores.
-    if (type === OsEventTypeList.DOUBLE_CLICK_EVENT) { if (reading) { reading = false; ticker.at = Date.now(); render(); } }
+    // minimized: on the titles, tap opens the paper and double-tap is the
+    // previous title; in a paper, double-tap goes back to the titles. Swipe
+    // moves along the titles, or scrolls the paper. Only long press restores.
+    if (type === OsEventTypeList.DOUBLE_CLICK_EVENT) {
+      if (reading) reading = false;
+      else if (papers.length) ticker.i = (ticker.i - 1 + papers.length) % papers.length;
+      ticker.at = Date.now();
+      render();
+    }
     else if (type === OsEventTypeList.SCROLL_TOP_EVENT || type === OsEventTypeList.SCROLL_BOTTOM_EVENT) {
       if (Date.now() - lastScroll < 250) return; // swipes fire in bursts
       lastScroll = Date.now();
