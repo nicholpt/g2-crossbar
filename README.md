@@ -64,8 +64,12 @@ From the Even Hub simulator, with demo agents and projects.
 - **Top line**: the time, then headlines from any RSS/Atom feeds you choose (newest AI
   papers on arXiv by default), scrolling sideways when they're long, and the glasses'
   battery.
-- **Minimize**: long press shrinks everything to that one top line (or, inside an
-  agent's view, to the agent's state and time). Long press again or double-tap restores.
+- **Minimize**: long press shrinks everything to the bottom-left corner: the feed's
+  titles sliding by over the time, agents needing you, the paper's number and the
+  battery (inside an agent's view, the agent and its state instead of the time). Swipe
+  for the previous or next title; tap one to read it, and the corner (a quarter of the
+  screen) fills with its title, authors and abstract. Swipe scrolls it; double-tap goes
+  back to the titles. Long press again restores.
 
 The phone shows the same Crossbar, touch-driven, plus a text box for typing into agents.
 There's also a terminal version for the Mac itself: `npm run tui`.
@@ -77,7 +81,7 @@ There's also a terminal version for the Mac itself: `npm run tui`.
 | Swipe | move |
 | Tap | open / options / do it |
 | Double-tap | back (on the top level: Even's exit dialog) |
-| Long press | minimize / restore |
+| Long press | minimize / restore (minimized: swipe moves along the titles or scrolls the paper, tap reads it, double-tap goes back to the titles) |
 
 ## Requirements
 
@@ -100,7 +104,7 @@ There's also a terminal version for the Mac itself: `npm run tui`.
 | `logs` | `[".run/crossbar.log"]` | Log files you can tail from System |
 | `feed.urls` | arXiv cs.AI/LG/CL | RSS/Atom feeds for the top line; `[]` turns it off |
 | `feed.minutes` | `30` | Refresh interval (5–1440) |
-| `feed.max` | `40` | Headlines kept |
+| `feed.max` | `40` | Items kept |
 
 The feed can also be edited on the phone (⚙ Setup). Restart the bridge after changing
 `agents`: `launchctl kickstart -k gui/$(id -u)/com.g2crossbar.bridge`.

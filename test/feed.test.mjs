@@ -11,12 +11,25 @@ test('RSS: titles, CDATA, entities; items without a title are skipped', () => {
   assert.equal(feed('rss.xml')[0].source, 'Example News');
 });
 
+test('RSS: description (escaped HTML) as plain text, creator and category', () => {
+  const [a, b] = feed('rss.xml');
+  assert.deepEqual({ summary: a.summary, authors: a.authors, cat: a.cat }, { summary: 'The whole story here.', authors: 'A. Writer', cat: 'World' });
+  assert.deepEqual([b.summary, b.authors, b.cat], [undefined, undefined, undefined]); // only what the feed has
+});
+
 test('Atom: whitespace collapsed', () => {
   assert.deepEqual(feed('atom.xml').map((i) => i.title), ['An entry split over lines', 'Second entry']);
 });
 
 test('arXiv API (Atom): wrapped titles joined', () => {
   assert.deepEqual(feed('arxiv.xml').map((i) => i.title), ['Benchmarking Personalized Robotic Manipulation', 'Discovering circuits with large language models']);
+});
+
+test('arXiv API (Atom): abstract with its TeX as plain text, authors and primary category', () => {
+  const [a] = feed('arxiv.xml');
+  assert.equal(a.summary, 'We replace u-prediction with x0-prediction at α = 0.5 & compare.');
+  assert.equal(a.authors, 'Ada Example, Grace Sample');
+  assert.equal(a.cat, 'cs.RO');
 });
 
 test('garbage in, nothing out', () => {

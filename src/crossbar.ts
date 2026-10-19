@@ -63,8 +63,8 @@ let frame: Frame | null = null;
 let scroll = 0;
 let ai = 0; // answer-list cursor (a prompt's options, then "Keys…")
 let keymode = false; // glasses key strip under a pane view
-let papers: { id: string; title: string; cat?: string; authors?: string; summary?: string }[] = []; // top-line feed headlines (the Mac fetches them; arXiv AI papers by default)
-let mini = false; // glasses minimized to a small top-left tag (long press); the rest of the screen is left clear
+let papers: { title: string; cat?: string; authors?: string; summary?: string }[] = []; // top-line feed items (the Mac fetches them; arXiv AI papers by default)
+let mini = false; // glasses minimized to the top-left quarter (long press): the time and a paper to read; the rest is left clear
 let ki = 0;
 let toast = { text: '', until: 0 };
 let offline = 'connecting…';
@@ -262,8 +262,7 @@ const L = (text: string, color: number): Line => ({ text, color });
 function statusLine(): Line {
   const t = toastText();
   if (t) return L(fit(padTo('', Math.max(0, (568 - getTextWidth(fit(t, 520))) / 2)) + t, 568), 4); // banner
-  const n = needsCount();
-  const left = `${clock()}${mini && n ? `   ※${n}` : ''}`; // minimized there's no icon badge
+  const left = clock();
   const right = battery();
   const room = 548 - getTextWidth(left) - getTextWidth(SEP) - (right ? getTextWidth(right) + 24 : 0);
   const title = paperTicker(room);
@@ -381,18 +380,39 @@ function termView(): string {
   return [head, '─'.repeat(Math.floor(566 / (getTextWidth('─') || 10))), ...rows.slice(start, start + n)].join('\n');
 }
 
-// Minimized: one small line top-left. In an agent's view, that agent's state and
-// time in it; elsewhere the time and how many agents need you. Alerts only
-// change the tag for a moment; they never reopen the full screen.
+// Minimized: the bottom-left quarter of the display. Its bottom line is the
+// time and how many agents need you (in an agent's view: that agent and its
+// state instead), then the paper's number and the battery. Over it, the feed's
+// titles slide by as on the top bar (swipe for the previous / next one). Tap
+// one to read it: the corner fills with its title, who and which category,
+// then the abstract (swipe scrolls, double-tap goes back to the titles). Alerts only
+// change the bottom line for a moment; they never reopen the full screen.
+const MINI_W = 270, MINI_ROWS = 4; // paper lines above the bottom line
+let reading = false; // minimized and reading a paper (else its titles slide by)
+const reader = { off: 0 };
+function paperLines(): string[] {
+  const p = papers[ticker.i % papers.length];
+  const authors = p.authors?.split(', ') ?? [];
+  const who = authors.length > 1 ? `${authors[0].split(' ').pop()} et al.` : authors[0];
+  const w = (s: string) => wrap([s], MINI_W).map((l) => l.trimStart());
+  return [...w(p.title), ...w([who, p.cat].filter(Boolean).join(' · ')), ...(p.summary ? w(p.summary) : [])];
+}
 function miniTag(): Line {
   const t = toastText();
-  if (level !== 'menu' && isPane()) {
-    if (t) return L(fit(t, 410), 4);
+  let left = `${clock()}${needsCount() ? `  ※${needsCount()}` : ''}`;
+  if (level !== 'menu' && isPane()) { // "claude Asking": the state's time doesn't fit beside the number
     const agent = cats.find((c) => c.id === 'agents')?.items.find((it) => it.id === viewing);
-    const name = agent?.label ?? cap(frame?.label ?? '');
-    return L(fit([name, agent?.meta].filter(Boolean).join(' · '), 410), 3);
+    left = [agent?.label ?? cap(frame?.label ?? ''), agent?.meta?.split(' · ')[0]].filter(Boolean).join(' ');
   }
-  return statusLine(); // home: the same top bar as the full Crossbar
+  const num = papers.length ? `${ticker.i % papers.length + 1}/${papers.length}` : '';
+  const bottom = t ? fit(t, MINI_W) : spread(left, [num, battery()].filter(Boolean).join(' '), MINI_W);
+  if (!papers.length || !reading) return L(`${'\n'.repeat(MINI_ROWS - 1)}${paperTicker(MINI_W)}\n${bottom}`, t ? 4 : 3);
+  const lines = paperLines();
+  reader.off = Math.min(reader.off, Math.max(0, lines.length - MINI_ROWS));
+  const page = lines.slice(reader.off, reader.off + MINI_ROWS);
+  while (page.length < MINI_ROWS) page.push('');
+  if (reader.off + MINI_ROWS < lines.length) page[MINI_ROWS - 1] = spread(page[MINI_ROWS - 1], '▼', MINI_W); // more below: in the corner, over the battery
+  return L([...page, bottom].join('\n'), t ? 4 : 3);
 }
 // All glasses text at one brightness (the user's choice); the per-line levels
 // in L(...) are kept but not applied.
@@ -409,7 +429,7 @@ function keyStrip(): string {
 type Page = 'crossbar' | 'term' | 'termkeys' | 'mini';
 function layout(page: Page) {
   if (page === 'mini') {
-    return { containerTotalNum: 1, textObject: [text(C.mini, { xPosition: 8, yPosition: 0, width: 560, height: 28, textColor: 3, isEventCapture: 1 })] };
+    return { containerTotalNum: 1, textObject: [text(C.mini, { xPosition: 0, yPosition: 144, width: 288, height: 144, paddingLength: 4, textColor: 3, isEventCapture: 1 })] };
   }
   if (page === 'termkeys') {
     return { containerTotalNum: 2, textObject: [
@@ -681,7 +701,7 @@ function connect() {
 // Running apps / panes change on their own; refresh while browsing.
 setInterval(() => { if ((level !== 'view' && level !== 'menu' && !ask) || mini) send({ type: 'crossbar' }); }, 5000);
 // the scrolling paper title in the top bar (renders only send what changed)
-setInterval(() => { if (papers.length && (mini ? !(level !== 'menu' && isPane()) : page === 'crossbar')) renderGlasses(); }, STEP_MS);
+setInterval(() => { if (papers.length && (mini ? !reading : page === 'crossbar')) renderGlasses(); }, STEP_MS);
 // toasts, the clock and Ask's countdown / result
 setInterval(() => {
   if (toast.text && Date.now() > toast.until) toast = { text: '', until: 0 };
@@ -737,10 +757,22 @@ $('sheetsend').addEventListener('click', () => {
 let lastScroll = 0;
 function onInput(type: OsEventTypeList | undefined) {
   type = type ?? OsEventTypeList.CLICK_EVENT; // protobuf drops CLICK (0)
-  if (type === OsEventTypeList.LONG_PRESS_EVENT) { mini = !mini; render(); return; }
+  if (type === OsEventTypeList.LONG_PRESS_EVENT) { mini = !mini; reading = false; ticker.at = Date.now(); render(); return; }
   if (mini) {
-    // minimized: only long press / double-tap bring it back; nothing else can act
-    if (type === OsEventTypeList.DOUBLE_CLICK_EVENT) { mini = false; render(); }
+    // minimized: tap opens a paper, double-tap goes back to the titles; swipe
+    // scrolls the paper, or moves along the titles. Only long press restores.
+    if (type === OsEventTypeList.DOUBLE_CLICK_EVENT) { if (reading) { reading = false; ticker.at = Date.now(); render(); } }
+    else if (type === OsEventTypeList.SCROLL_TOP_EVENT || type === OsEventTypeList.SCROLL_BOTTOM_EVENT) {
+      if (Date.now() - lastScroll < 250) return; // swipes fire in bursts
+      lastScroll = Date.now();
+      const d = type === OsEventTypeList.SCROLL_BOTTOM_EVENT ? 1 : -1;
+      if (reading) reader.off = Math.max(0, reader.off + 3 * d); // the last line stays, for context
+      else if (papers.length) { ticker.i = (ticker.i + d + papers.length) % papers.length; ticker.at = Date.now(); }
+      render();
+    } else if (type === OsEventTypeList.CLICK_EVENT && papers.length && !reading) {
+      reading = true; reader.off = 0;
+      render();
+    }
     else if (type === OsEventTypeList.FOREGROUND_ENTER_EVENT) { shown = {}; connect(); send({ type: 'crossbar' }); render(); }
     return;
   }

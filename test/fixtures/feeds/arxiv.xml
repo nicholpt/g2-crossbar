@@ -6,7 +6,15 @@
     <id>http://arxiv.org/abs/2610.00001v1</id>
     <title>Benchmarking Personalized Robotic
   Manipulation</title>
-    <summary>We study ...</summary>
+    <summary>  We replace $\boldsymbol{u}$-prediction with
+  $\boldsymbol{x_0}$-prediction at $\alpha = 0.5$ &amp; compare.
+</summary>
+    <author>
+      <name>Ada Example</name>
+    </author>
+    <author>
+      <name>Grace Sample</name>
+    </author>
     <arxiv:primary_category term="cs.RO"/>
   </entry>
   <entry>
