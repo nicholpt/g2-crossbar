@@ -332,7 +332,8 @@ function crossbarView(): GlassView {
       title: L(a ? (armed === a.id ? `${a.label}?` : a.label) : '', 4), sub: L(a && armed === a.id ? 'Tap again to confirm' : '', 2),
       below1: L(fit(acts[mi + 1]?.label ?? '', w), 2), below2: L(fit(acts[mi + 2]?.label ?? '', w), 1) };
   }
-  // home (bar) and inside a category: the category name or the item is the focus
+  // home (bar) and inside a category: the category (its icon ringed, no
+  // selection box: see layout('home')) or the item is the focus
   const list = items();
   const i = ii();
   const it = list[i];
@@ -455,7 +456,7 @@ function keyStrip(): string {
   return fit(out, 566);
 }
 
-type Page = 'crossbar' | 'term' | 'termkeys' | 'mini';
+type Page = 'crossbar' | 'home' | 'term' | 'termkeys' | 'mini';
 function layout(page: Page) {
   if (page === 'mini') {
     return { containerTotalNum: 1, textObject: [text(C.mini, { xPosition: 0, yPosition: 144, width: 288, height: 144, paddingLength: 4, textColor: 3, isEventCapture: 1 })] };
@@ -475,15 +476,16 @@ function layout(page: Page) {
   }
   const col = { xPosition: COL, width: W_ITEMS };
   return {
-    containerTotalNum: 11,
+    containerTotalNum: page === 'home' ? 10 : 11,
     textObject: [
       text(C.status, { xPosition: 8, yPosition: 0, width: 560, height: 28, textColor: 2 }),
       text(C.label, { ...col, yPosition: 98, height: 28 }),
       text(C.above, { ...col, yPosition: 128, height: 27, textColor: 1 }),
       // the selection: one soft rounded outline around the title and its subtitle,
-      // which share a container so they always change together
-      text(C.box, { xPosition: COL - 12, yPosition: 157, width: W_ITEMS + 12, height: 62, borderWidth: 1, borderColor: 8, borderRadius: 10, isEventCapture: 1 }),
-      text(C.title, { xPosition: COL, yPosition: 160, width: W_ITEMS - 8, height: 56 }),
+      // which share a container so they always change together. Choosing a
+      // category ('home') has no outline: the focus is the category's icon.
+      ...(page === 'home' ? [] : [text(C.box, { xPosition: COL - 12, yPosition: 157, width: W_ITEMS + 12, height: 62, borderWidth: 1, borderColor: 8, borderRadius: 10, isEventCapture: 1 })]),
+      text(C.title, { xPosition: COL, yPosition: 160, width: W_ITEMS - 8, height: 56, ...(page === 'home' && { isEventCapture: 1 }) }),
       text(C.below1, { ...col, yPosition: 224, height: 28, textColor: 2 }),
       text(C.below2, { ...col, yPosition: 254, height: 28, textColor: 1 }),
     ],
@@ -505,7 +507,8 @@ function iconPlan() {
     if (!n || (s.d && n < 2) || (s.d < 0 && n < 3) || s.d >= n) return { s, key: 'blank' };
     const c = cats[(ci + s.d + n) % n];
     const badge = c.id === 'needs' ? needsCount() : 0;
-    return { s, c, badge, key: `${c.id}|${s.size}|${s.d !== 0}|${badge}` };
+    const ring = s.d === 0 && level === 'bar'; // choosing a category: its icon is the focus
+    return { s, c, badge, ring, key: `${c.id}|${s.size}|${s.d !== 0}|${badge}|${ring}` };
   });
 }
 
@@ -521,7 +524,8 @@ async function renderGlasses() {
   if (busy) { dirty = true; return; }
   busy = true;
   try {
-    const want: Page = mini ? 'mini' : level === 'view' && !ask ? (keymode ? 'termkeys' : 'term') : 'crossbar';
+    const want: Page = mini ? 'mini' : level === 'view' && !ask ? (keymode ? 'termkeys' : 'term')
+      : level === 'bar' && cats.length && !needsSetup() && !ask ? 'home' : 'crossbar';
     if (page !== want) {
       if (!(await bridge.rebuildPageContainer(new RebuildPageContainer(layout(want))))) throw new Error('page rebuild rejected');
       page = want; shown = {};
@@ -535,11 +539,11 @@ async function renderGlasses() {
       await bridge.textContainerUpgrade(new TextContainerUpgrade({ containerID: c.id, containerName: c.name, content: v, textColor: BRIGHT }));
       shown[name] = `${color}|${v}`;
     }
-    if (want === 'crossbar') {
+    if (want === 'crossbar' || want === 'home') {
       // icons after text (text is what you read first); one image at a time over BLE
-      for (const { s, c, badge, key } of iconPlan().sort((a, b) => Math.abs(a.s.d) - Math.abs(b.s.d))) {
+      for (const { s, c, badge, ring, key } of iconPlan().sort((a, b) => Math.abs(a.s.d) - Math.abs(b.s.d))) {
         if (shown[s.name] === key) continue;
-        const png = c ? iconPng(c.id, s.size, { badge }) : blankPng(s.size);
+        const png = c ? iconPng(c.id, s.size, { badge, ring }) : blankPng(s.size);
         const r = await bridge.updateImageRawData(new ImageRawDataUpdate({ containerID: s.id, containerName: s.name, imageData: png }));
         if (r === ImageRawDataUpdateResult.success) shown[s.name] = key;
         if (dirty) break; // the user moved on: redraw text for the new position first
@@ -734,7 +738,7 @@ function connect() {
 // Running apps / panes change on their own; refresh while browsing.
 setInterval(() => { if ((level !== 'view' && level !== 'menu' && !ask) || mini) send({ type: 'crossbar' }); }, 5000);
 // the scrolling paper title in the top bar (renders only send what changed)
-setInterval(() => { if (papers.length && (mini ? !reading : page === 'crossbar')) renderGlasses(); }, STEP_MS);
+setInterval(() => { if (papers.length && (mini ? !reading : page === 'crossbar' || page === 'home')) renderGlasses(); }, STEP_MS);
 // an agent's subject sliding in its view's header (only the header is resent)
 setInterval(() => { if (subjectSliding && !mini && (page === 'term' || page === 'termkeys')) renderGlasses(); }, STEP_MS);
 // toasts, the clock and Ask's countdown / result
