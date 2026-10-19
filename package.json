@@ -1,6 +1,6 @@
 {
   "name": "g2-crossbar",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A cross-bar menu for Even Realities G2 glasses, inspired by the PSP's XrossMediaBar: watch and answer your coding agents (Claude Code, Codex, Antigravity, Kimi) running in tmux on your Mac, plus apps, projects, music, notes and a headline ticker.",
   "license": "MIT",
   "type": "module",

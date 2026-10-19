@@ -2,9 +2,9 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
-## Unreleased
+## 1.0.4
 
-- **Fixed:** an agent's subject was dropped from its header when the name, model, folder and state left under 80 px (often, with a long model or folder). Now the agent, model and effort stay put, and the folder and subject follow, sliding sideways together when they don't fit: `Claude - Opus 5.5 xhigh · ~/g2-term · tidy the release notes`.
+- **Fixed:** an agent's subject was dropped from its header when the name, model, folder and state left under 80 px (often, with a long model or folder). Now the agent, model and effort stay put, and the folder and subject follow, sliding sideways together when they don't fit: `Claude - Opus 5.5 xhigh · ~/Documents · tidy the release notes`.
 
 ## 1.0.3
 
