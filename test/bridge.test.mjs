@@ -54,13 +54,13 @@ function client() {
   ws.on('message', (d) => {
     const m = JSON.parse(d);
     seen.push(m);
-    for (const w of [...waiters]) if (w.match(m)) { waiters.splice(waiters.indexOf(w), 1); w.resolve(m); }
+    for (const w of [...waiters]) if (w.wants(m)) { waiters.splice(waiters.indexOf(w), 1); w.resolve(m); }
   });
   const next = (match, ms = 12_000) => new Promise((resolve, reject) => {
     const hit = seen.find(match);
     if (hit) { seen.splice(seen.indexOf(hit), 1); return resolve(hit); }
     const t = setTimeout(() => reject(new Error(`timed out; got: ${seen.map((m) => m.type).join(', ')}`)), ms);
-    waiters.push({ match, resolve: (m) => { clearTimeout(t); resolve(m); } });
+    waiters.push({ wants: match, resolve: (m) => { clearTimeout(t); resolve(m); } });
   });
   const send = (m) => ws.send(JSON.stringify(m));
   return { ws, next, send, open: new Promise((r) => ws.on('open', r)) };
@@ -162,4 +162,13 @@ test('the setup screen gets its feed suggestions from the bridge', { skip, timeo
   const { presets } = await c.next((m) => m.type === 'setup');
   assert.ok(presets.length >= 2 && presets.every(([name, url]) => name && /^https:\/\//.test(url)));
   c.ws.close();
+});
+
+test('the bridge serves its files, and nothing that is a folder or outside dist', { skip, timeout: 15_000 }, async () => {
+  const get = async (path) => (await fetch(`http://127.0.0.1:${PORT}${path}`)).status;
+  assert.equal(await get('/'), 200);
+  assert.equal(await get('/crossbar.html'), 200);
+  assert.equal(await get('/assets'), 404); // a folder
+  assert.equal(await get('/nope.js'), 404);
+  assert.equal(await get('/%2e%2e/package.json'), 404); // outside dist
 });

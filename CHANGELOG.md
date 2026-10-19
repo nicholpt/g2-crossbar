@@ -2,6 +2,11 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
+## Unreleased
+
+- **Security:** the app only follows a `?ws=` link parameter to a bridge on the same machine (it's for the simulator), so a link can't point it at someone else's server.
+- **Security:** hardening from code scanning: names from the bridge (categories, icons) can no longer reach built-in object properties; the bridge reads a file once instead of checking it first, and serves nothing outside its own folder (`dist` no longer matches a sibling like `dist-pack`); feed titles have tags stripped until none are left; feed URLs read from `crossbar.json` must be http(s).
+
 ## 1.0.7
 
 - **Fixed:** re-running `bin/setup` could leave the bridge stopped ("Bootstrap failed: 5: Input/output error"): launchd hadn't finished removing the old one. Setup now waits for it, retries, and says so if launchd still refuses.

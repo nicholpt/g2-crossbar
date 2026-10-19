@@ -116,7 +116,7 @@ function paint(id: string, size: number, opts: Opts) {
   g.lineWidth = size >= 48 ? 1.6 : 1.9; // heavier at small sizes so lines survive the display
   g.lineCap = 'round';
   g.lineJoin = 'round';
-  (ICONS[id] ?? ICONS.apps)(g);
+  (Object.hasOwn(ICONS, id) ? ICONS[id] : ICONS.apps)(g); // ids come from the bridge
   g.restore();
   if (opts.ring) {
     g.strokeStyle = ink;

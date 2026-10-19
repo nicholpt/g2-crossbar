@@ -1,6 +1,9 @@
 // Items from RSS 2.0 / RDF (<item>) and Atom (<entry>) feeds, for the glasses'
 // top line and the minimized reader. Pure (no I/O).
-const unxml = (s) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '')
+// tags out, repeated until nothing changes (a single pass is what CodeQL flags);
+// the result is plain text, shown as text, never as HTML
+const untag = (s) => { for (let prev; prev !== s;) { prev = s; s = s.replace(/<[^>]*>/g, ''); } return s; };
+const unxml = (s) => untag(s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'))
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&nbsp;/g, ' ')
   .replace(/&#(\d+);|&#x([\da-f]+);/gi, (m, d, h) => { const n = d ? +d : parseInt(h, 16); return n <= 0x10ffff ? String.fromCodePoint(n) : m; })
   .replace(/&amp;/g, '&');

@@ -76,7 +76,10 @@ const FEED_DEFAULTS = {
   max: 40,
 };
 const readSettings = () => { try { return JSON.parse(readFileSync(SETTINGS, 'utf8')); } catch { return {}; } };
-const feedSettings = () => ({ ...FEED_DEFAULTS, ...readSettings().feed });
+const feedSettings = () => {
+  const f = { ...FEED_DEFAULTS, ...readSettings().feed };
+  return { ...f, urls: (Array.isArray(f.urls) ? f.urls : []).map(String).filter((u) => /^https?:\/\//.test(u)) }; // a hand-edited file too
+};
 let papers = []; // { title, source } (named for the arXiv default; any feed's items)
 let feedRun = 0; // fetches overlap (feeds saved twice quickly): only the newest may set papers
 async function fetchFeeds() {
