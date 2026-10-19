@@ -89,7 +89,7 @@ There's also a terminal version for the Mac itself: `npm run tui`.
 - Even G2 glasses and the Even app (2.2.10 or later)
 - A Mac (Apple silicon or Intel) with [Homebrew](https://brew.sh), Node.js 20+ and tmux
 - Either Tailscale on the Mac and your phone (same account), or both on the same home Wi-Fi
-- Optional: `whisper-cpp` for voice Ask, Spotify, Docker, Obsidian
+- Optional: `whisper.cpp` for voice Ask, Spotify, Docker, Obsidian
 
 ## Settings
 
@@ -177,6 +177,9 @@ prompt into a fixture, and the manual checklist for real hardware.
 `npm run pack` builds `crossbar.ehpk` from `app.json` (store build: no address built in;
 users enter theirs on the setup screen). `bin/setup` builds a personal one instead,
 with your Mac's address in the network whitelist.
+
+[docs/SBOM.md](docs/SBOM.md) lists everything Crossbar ships, needs and connects to;
+`npm run sbom` writes it as CycloneDX JSON, and each release attaches one.
 
 ### Publishing to Even Hub
 

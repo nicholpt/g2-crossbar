@@ -59,7 +59,7 @@ else
   KEY="$(/usr/libexec/PlistBuddy -c 'Print :EnvironmentVariables:CROSSBAR_KEY' "$PLIST" 2>/dev/null || true)"
   [[ ${#KEY} -ge 8 ]] || KEY="$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 12)"
 fi
-if command -v whisper-server >/dev/null; then ok "whisper-server (voice Ask)"; else warn "whisper-server missing: voice Ask won't work until you brew install whisper-cpp"; fi
+if command -v whisper-server >/dev/null; then ok "whisper-server (voice Ask)"; else warn "whisper-server missing: voice Ask won't work until you brew install whisper.cpp"; fi
 
 bold "2. Build"
 npm install --no-audit --no-fund --loglevel=error

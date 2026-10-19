@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v1.0.3 to publish crossbar.ehpk as a GitHub Release. The tag
+# Push a tag like v1.0.3 to publish crossbar.ehpk (with its SBOM) as a GitHub Release. The tag
 # must match "version" in app.json, package.json and package-lock.json, and
 # CHANGELOG.md's section for that version becomes the release notes.
 on:
@@ -37,6 +37,12 @@ jobs:
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: crossbar.ehpk
+      - name: SBOM (CycloneDX)
+        run: npm run sbom
+      - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: crossbar.ehpk
+          sbom-path: crossbar.sbom.cdx.json
       - name: Release notes from CHANGELOG.md
         run: |
           v=${GITHUB_REF_NAME#v}
@@ -45,4 +51,4 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" crossbar.ehpk crossbar.ehpk.sha256 --notes-file notes.md --title "Crossbar $GITHUB_REF_NAME"
+        run: gh release create "$GITHUB_REF_NAME" crossbar.ehpk crossbar.ehpk.sha256 crossbar.sbom.cdx.json --notes-file notes.md --title "Crossbar $GITHUB_REF_NAME"

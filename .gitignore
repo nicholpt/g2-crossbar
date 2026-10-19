@@ -7,3 +7,4 @@ dist-pack
 *.ehpk
 crossbar.json
 app.local.json
+crossbar.sbom.cdx.json
