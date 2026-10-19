@@ -55,6 +55,15 @@ test("Claude's pane view drops its token count and update notices", () => {
   assert.equal(withoutClaudeStatus(`${reply}\n${working}\n\n${footer}`), `${reply}\n${working}\n\n  ⏵⏵ accept edits on (shift+tab to cycle)`);
 });
 
+test("Claude's pane view drops the session title drawn into its input box", () => {
+  const rule = '─'.repeat(60);
+  const box = (top) => `● Done: the notes are tidy.\n\n${top}\n❯ ship it\n${rule}\n  ⏵⏵ auto mode on (shift+tab to cycle)`;
+  assert.equal(withoutClaudeStatus(box(`${rule} tidy the release notes ─`)), '● Done: the notes are tidy.\n\n❯ ship it\n' + rule + '\n  ⏵⏵ auto mode on (shift+tab to cycle)');
+  assert.equal(withoutClaudeStatus(box(rule)), box(rule)); // an untitled border stays
+  const quoted = `● The border reads "${rule} like this ─"\n❯ ok`; // a reply quoting one: not at the line's start
+  assert.equal(withoutClaudeStatus(quoted), quoted);
+});
+
 test("an agent's subject comes from its terminal title", () => {
   const host = 'studio.local';
   assert.equal(paneSubject('✳ tidy the release notes', '/u/notes', host), 'tidy the release notes'); // Claude, idle

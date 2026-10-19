@@ -84,7 +84,7 @@ const asking = () => !!ask && ['listening', 'transcribing', 'pending'].includes(
 const dismissAsk = () => { ask = null; render(); };
 
 // --- navigation (shared by glasses, phone touch and keyboard) -------------------
-function moveCat(d: number) { if (cats.length) { ci = (ci + d + cats.length) % cats.length; render(); } }
+function moveCat(d: number) { if (cats.length) { ci = (ci + d + cats.length) % cats.length; render(); refreshSoon(); } }
 function moveItem(d: number) {
   const n = items().length;
   if (n) { itemIdx[cat().id] = Math.max(0, Math.min(n - 1, ii() + d)); render(); }
@@ -271,10 +271,19 @@ function statusLine(): Line {
 }
 
 // The newest AI papers on arXiv (cs.AI/LG/CL) after the clock. A title that
-// doesn't fit scrolls sideways: hold, slide a few characters per step to its
-// end, hold, then the next title.
+// doesn't fit scrolls sideways: hold, slide a word per step to its end, hold,
+// then the next title.
 const SEP = '   ';
-const HOLD_MS = 2000, STEP_MS = 400, STEP_CHARS = 3;
+// Every slide step is a Bluetooth write to the glasses, so slides step a word
+// about once a second, and stop after a minute without input: the text rests at
+// its start until the next swipe or tap.
+const HOLD_MS = 2000, STEP_MS = 1000, CALM_MS = 60_000;
+let lastInput = Date.now();
+const calm = () => Date.now() - lastInput > CALM_MS;
+function touched() {
+  if (calm()) ticker.at = headSlide.at = Date.now(); // slides start over, not mid-way
+  lastInput = Date.now();
+}
 const ticker = { i: 0, at: 0 };
 function paperTicker(room: number): string {
   if (!papers.length || room < 80) return '';
@@ -283,18 +292,19 @@ function paperTicker(room: number): string {
   if (r.over) { ticker.i++; ticker.at = Date.now(); return paperTicker(room); }
   return r.text;
 }
-// `text` in `room` px, `since` it first showed: held, slid a few characters per
-// step to its end, held; `over` once that's done (short texts stay 8 s).
+// `text` in `room` px, `since` it first showed: held, slid a word per step to
+// its end, held; `over` once that's done (short texts stay 8 s). At rest (calm)
+// it shows its start and never ends.
 function slid(text: string, room: number, since: number): { text: string; over: boolean } {
-  const end = (() => { // first offset from which the rest fits
-    let k = 0;
-    while (k < text.length && getTextWidth(text.slice(k)) > room) k += STEP_CHARS;
-    return k;
-  })();
+  const starts = [0]; // where each word starts
+  for (let k = 1; k < text.length; k++) if (text[k - 1] === ' ' && text[k] !== ' ') starts.push(k);
+  let n = 0; // steps until the rest fits
+  while (n < starts.length - 1 && getTextWidth(text.slice(starts[n])) > room) n++;
+  if (calm()) return { text: fit(text, room), over: false };
   const elapsed = Date.now() - since;
-  const off = Math.min(end, Math.max(0, Math.floor((elapsed - HOLD_MS) / STEP_MS)) * STEP_CHARS);
-  const done = HOLD_MS + Math.ceil(end / STEP_CHARS) * STEP_MS + (end ? HOLD_MS : 6000);
-  return { text: fit(off ? text.slice(off).trimStart() : text, room), over: elapsed > done };
+  const step = Math.min(n, Math.max(0, Math.floor((elapsed - HOLD_MS) / STEP_MS)));
+  const done = HOLD_MS + n * STEP_MS + (n ? HOLD_MS : 6000);
+  return { text: fit(text.slice(starts[step]), room), over: elapsed > done };
 }
 
 function askView(): Partial<GlassView> {
@@ -428,6 +438,16 @@ function paperLines(): string[] {
   const byline = [who, p.cat].filter(Boolean).join(' · ');
   return [...w(p.title), ...(byline ? w(byline) : []), ...(p.summary ? w(p.summary) : [])];
 }
+// The current paper's title, whole (up to MINI_ROWS lines, no sliding): the
+// next one every 20 s, a single write each.
+const MINI_TITLE_MS = 20_000;
+function miniTitle(): string[] {
+  if (!ticker.at) ticker.at = Date.now();
+  if (Date.now() - ticker.at > MINI_TITLE_MS) { ticker.i++; ticker.at = Date.now(); }
+  const lines = wrap([papers[ticker.i % papers.length].title], MINI_W).map((l) => l.trimStart());
+  if (lines.length > MINI_ROWS) lines.splice(MINI_ROWS - 1, Infinity, fit(lines.slice(MINI_ROWS - 1).join(' '), MINI_W));
+  return lines;
+}
 function miniTag(): Line {
   const t = toastText();
   let left = `${clock()}${needsCount() ? `  ※${needsCount()}` : ''}`;
@@ -437,7 +457,10 @@ function miniTag(): Line {
   }
   const num = papers.length ? `${ticker.i % papers.length + 1}/${papers.length}` : '';
   const bottom = t ? fit(t, MINI_W) : spread(left, [num, battery()].filter(Boolean).join(' '), MINI_W);
-  if (!papers.length || !reading) return L(`${'\n'.repeat(MINI_ROWS - 1)}${paperTicker(MINI_W)}\n${bottom}`, t ? 4 : 3);
+  if (!papers.length || !reading) {
+    const title = papers.length ? miniTitle() : [];
+    return L([...Array(MINI_ROWS - title.length).fill(''), ...title, bottom].join('\n'), t ? 4 : 3);
+  }
   const lines = paperLines();
   reader.off = Math.min(reader.off, Math.max(0, lines.length - MINI_ROWS));
   const page = lines.slice(reader.off, reader.off + MINI_ROWS);
@@ -681,7 +704,7 @@ function connect() {
   let opened = false;
   ws.onopen = () => {
     opened = true; offline = '';
-    send({ type: 'crossbar' });
+    refreshList();
     send({ type: 'papers' });
     if (!$('setup').hidden) send({ type: 'setup' });
     if (device.wearing !== undefined) send({ type: 'presence', wearing: device.wearing });
@@ -736,12 +759,13 @@ function connect() {
   };
 }
 
-// Running apps / panes change on their own; refresh while browsing.
-setInterval(() => { if ((level !== 'view' && level !== 'menu' && !ask) || mini) send({ type: 'crossbar' }); }, 5000);
-// the scrolling paper title in the top bar (renders only send what changed)
-setInterval(() => { if (papers.length && (mini ? !reading : page === 'crossbar' || page === 'home')) renderGlasses(); }, STEP_MS);
-// a view's header sliding (only the header is resent)
-setInterval(() => { if (headSliding && !mini && (page === 'term' || page === 'termkeys')) renderGlasses(); }, STEP_MS);
+// Running apps / panes change on their own; refresh while browsing (not while
+// minimized: alerts still arrive, the Mac pushes them). focus: the category on
+// screen, so the Mac only re-reads what it shows.
+const refreshList = () => send({ type: 'crossbar', focus: cats[ci]?.id });
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+const refreshSoon = () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(refreshList, 600); }; // landed on a category
+setInterval(() => { if (!mini && level !== 'view' && level !== 'menu' && !ask) refreshList(); }, 10_000);
 // toasts, the clock and Ask's countdown / result
 setInterval(() => {
   if (toast.text && Date.now() > toast.until) toast = { text: '', until: 0 };
@@ -750,13 +774,14 @@ setInterval(() => {
 }, 1000);
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { connect(); shown = {}; send({ type: 'crossbar' }); render(); }
+  if (document.visibilityState === 'visible') { connect(); shown = {}; refreshList(); render(); }
   else if (asking()) send({ type: 'ask-cancel' });
 });
 
 // --- phone controls -----------------------------------------------------------------
 addEventListener('keydown', (e) => {
   if (['TEXTAREA', 'INPUT'].includes((e.target as HTMLElement).tagName)) return;
+  touched();
   const k = e.key;
   if (k === 'ArrowLeft' && level === 'bar') moveCat(-1);
   else if (k === 'ArrowRight' && level === 'bar') moveCat(1);
@@ -797,7 +822,8 @@ $('sheetsend').addEventListener('click', () => {
 let lastScroll = 0;
 function onInput(type: OsEventTypeList | undefined) {
   type = type ?? OsEventTypeList.CLICK_EVENT; // protobuf drops CLICK (0)
-  if (type === OsEventTypeList.LONG_PRESS_EVENT) { mini = !mini; reading = false; ticker.at = Date.now(); render(); return; }
+  touched();
+  if (type === OsEventTypeList.LONG_PRESS_EVENT) { mini = !mini; reading = false; ticker.at = Date.now(); if (!mini) refreshList(); render(); return; }
   if (mini) {
     // minimized: on the titles, tap opens the paper and double-tap is the
     // previous title; in a paper, double-tap goes back to the titles. Swipe
@@ -819,7 +845,7 @@ function onInput(type: OsEventTypeList | undefined) {
       reading = true; reader.off = 0; reader.paper = papers[ticker.i % papers.length];
       render();
     }
-    else if (type === OsEventTypeList.FOREGROUND_ENTER_EVENT) { shown = {}; connect(); send({ type: 'crossbar' }); render(); }
+    else if (type === OsEventTypeList.FOREGROUND_ENTER_EVENT) { shown = {}; connect(); refreshList(); render(); }
     return;
   }
   if (type === OsEventTypeList.SCROLL_TOP_EVENT || type === OsEventTypeList.SCROLL_BOTTOM_EVENT) {
@@ -830,7 +856,7 @@ function onInput(type: OsEventTypeList | undefined) {
   else if (type === OsEventTypeList.DOUBLE_CLICK_EVENT) {
     if (ask?.state === 'pending') send({ type: 'ask-send' });
     else back();
-  } else if (type === OsEventTypeList.FOREGROUND_ENTER_EVENT) { shown = {}; connect(); send({ type: 'crossbar' }); render(); }
+  } else if (type === OsEventTypeList.FOREGROUND_ENTER_EVENT) { shown = {}; connect(); refreshList(); render(); }
 }
 
 function onDevice(s: { batteryLevel?: number; isCharging?: boolean; isWearing?: boolean } | undefined) {
