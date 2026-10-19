@@ -130,11 +130,13 @@ test('feeds saved twice quickly: the later save wins, even when the first fetch 
   // A is slow the first time only: the first save's fetch (A) finishes after the second's (A + B)
   let firstA = true;
   const rss = (name) => `<rss><channel><title>${name}</title><item><title>${name} headline</title></item></channel></rss>`;
+  const BODIES = { '/A': rss('A'), '/B': rss('B') }; // fixed bodies: nothing from the request is echoed
   const feeds = createServer((req, res) => {
-    const name = req.url.slice(1);
-    const delay = name === 'A' && firstA ? 2000 : 0;
-    if (name === 'A') firstA = false;
-    setTimeout(() => res.end(rss(name)), delay);
+    const body = BODIES[req.url];
+    if (!body) { res.statusCode = 404; res.end(); return; }
+    const delay = req.url === '/A' && firstA ? 2000 : 0;
+    if (req.url === '/A') firstA = false;
+    setTimeout(() => res.end(body), delay);
   });
   await new Promise((r) => feeds.listen(0, '127.0.0.1', r));
   t.after(() => feeds.close());
