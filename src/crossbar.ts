@@ -276,7 +276,7 @@ function statusLine(): Line {
 const SEP = '   ';
 // Every slide step is a Bluetooth write to the glasses, so slides step a word
 // about once a second, and stop after a minute without input: the text rests at
-// its start until the next swipe or tap.
+// its start until the next swipe or tap. The clock's 1 s render loop steps them.
 const HOLD_MS = 2000, STEP_MS = 1000, CALM_MS = 60_000;
 let lastInput = Date.now();
 const calm = () => Date.now() - lastInput > CALM_MS;
@@ -391,9 +391,7 @@ function termBody(): string {
 // the agent, model and effort stay put; its folder and what it's working on
 // (its terminal title) follow, and slide sideways together when they don't fit.
 const headSlide = { text: '', at: 0 };
-let headSliding = false; // the open view's folder and subject are sliding
 function termHead(): string {
-  headSliding = false;
   let pos = '';
   if (frame?.top && frame.target === viewing) { // "2 of 5" for documents (agents' screens follow the bottom)
     const rows = wrap(frame.lines, 566).length, n = VIEW_ROWS - 2 - (keymode ? 1 : 0);
@@ -415,7 +413,6 @@ function termHead(): string {
   if (headSlide.text !== rest) { headSlide.text = rest; headSlide.at = Date.now(); } // reset when a view opens
   let r = slid(rest, room, headSlide.at);
   if (r.over) { headSlide.at = Date.now(); r = slid(rest, room, headSlide.at); }
-  headSliding = true;
   return spread(`${name} · ${r.text}`, state, 566);
 }
 
@@ -766,7 +763,8 @@ const refreshList = () => send({ type: 'crossbar', focus: cats[ci]?.id });
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 const refreshSoon = () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(refreshList, 600); }; // landed on a category
 setInterval(() => { if (!mini && level !== 'view' && level !== 'menu' && !ask) refreshList(); }, 10_000);
-// toasts, the clock and Ask's countdown / result
+// toasts, the clock, Ask's countdown / result, and a step of any sliding text
+// (STEP_MS is a second); renders only send what changed
 setInterval(() => {
   if (toast.text && Date.now() > toast.until) toast = { text: '', until: 0 };
   if (ask && !asking() && Date.now() > ask.until) ask = null;
