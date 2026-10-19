@@ -262,13 +262,18 @@ export function paneSubject(title, path = '', host = hostname()) {
 // run of spaces, so a reply line (indented 2) or the working line "(12s · 3.4k
 // tokens · esc to interrupt)" never matches.
 const CLAUDE_STATUS = /\s{8,}(?:\d[\d,.]*k? tokens(?=\s*$|\s+·\s+(?:current:|[✔✓✗]|Update|Auto-update))|current: \S+ · latest: |[✔✓✗]?\s*(?:Update available! Run: claude update|Update installed · Restart to update|Auto-update failed))/;
-// The pane view without that footer text: it isn't the agent's output, and
-// dropping it frees a line. Only the last 8 non-blank lines are looked at.
+// The input box's top border, with the session title drawn into it
+// ("──────── tidy the release notes ─"): the header shows that title already.
+const CLAUDE_TITLED_RULE = /^\s*─{8,} \S.* ─+\s*$/;
+// The pane view without that footer text or the titled border: they aren't the
+// agent's output, and dropping them frees lines for it. Only the last 8
+// non-blank lines are looked at.
 export function withoutClaudeStatus(screen) {
   const lines = screen.split('\n');
   for (let i = lines.length - 1, seen = 0; i >= 0 && seen < 8; i--) {
     if (!lines[i].trim()) continue;
     seen++;
+    if (CLAUDE_TITLED_RULE.test(lines[i])) { lines.splice(i, 1); continue; }
     const at = lines[i].search(CLAUDE_STATUS);
     if (at < 0) continue;
     const rest = lines[i].slice(0, at).trimEnd();
@@ -436,7 +441,7 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
   const alerts = () => [...watch.entries()].filter(([, w]) => w.alert).map(([pane, w]) => ({ pane, agent: w.agent, ...w.alert }));
 
   // --- cached slow sources ---------------------------------------------------------------
-  const projects = () => cached('projects', 60_000, async () => {
+  const projects = (ms = 60_000) => cached('projects', ms, async () => {
     const roots = REPO_ROOTS.map((d) => `"$HOME/${d}"`).join(' ');
     const out = await sh(`for g in $(find ${roots} -maxdepth 3 -name .git -type d -not -path '*/.*/.git' 2>/dev/null); do r=\${g%/.git}; ` +
       `printf '%s\\t%s\\t%s\\t%s\\t%s\\n' "$r" "$(git -C "$r" rev-parse --abbrev-ref HEAD 2>/dev/null)" "$(git -C "$r" status --porcelain 2>/dev/null | wc -l | tr -d ' ')" ` +
@@ -449,13 +454,13 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
     }).sort((a, b) => b.time - a.time);
   });
 
-  const notes = () => cached('notes', 60_000, async () => {
+  const notes = (ms = 60_000) => cached('notes', ms, async () => {
     const vaults = settings().vaults.map((v) => sq(v)).join(' ');
     const out = await sh(`find ${vaults} -name '*.md' -not -path '*/.obsidian/*' -not -path '*/.trash/*' -type f -exec stat -f '%m\t%N' {} + 2>/dev/null | sort -rn | head -60`);
     return out.split('\n').filter(Boolean).map((l) => { const [m, path] = l.split('\t'); return { path, mtime: Number(m) }; });
   });
 
-  const tailnet = () => cached('tailnet', 15_000, async () => {
+  const tailnet = (ms = 15_000) => cached('tailnet', ms, async () => {
     const j = JSON.parse(await sh(`${tailscaleBin()} status --json 2>/dev/null`));
     const me = j.Self?.UserID;
     // only this user's own devices (other people share the tailnet)
@@ -467,13 +472,13 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
     })).sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
   });
 
-  const containers = () => cached('docker', 10_000, async () => {
+  const containers = (ms = 10_000) => cached('docker', ms, async () => {
     const out = await sh(`docker ps -a --format '{{.Names}}\t{{.State}}\t{{.Status}}\t{{.Image}}' 2>/dev/null || true`);
     return out.split('\n').filter(Boolean).map((l) => { const [name, state, status, image] = l.split('\t'); return { name, running: state === 'running', status, image }; });
   });
 
   // Spotify over Apple Events: needs a one-time Automation approval on the Mac.
-  const music = () => cached('music', 2000, async () => {
+  const musicNow = (ms = 2000) => cached('music', ms, async () => {
     const out = await sh(`osascript -e 'with timeout of 4 seconds' -e 'tell application "Spotify"' -e 'set t to current track' ` +
       `-e 'return (player state as text) & tab & (name of t) & tab & (artist of t) & tab & (album of t) & tab & (player position as integer) & tab & ((duration of t) div 1000) & tab & sound volume & tab & shuffling' ` +
       `-e 'end tell' -e 'end timeout' 2>&1 || true`);
@@ -534,7 +539,7 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
   async function view(id) {
     if (id.startsWith('pane:')) {
       const pane = id.slice(5);
-      const out = await run(`T=${tmux}; $T display -p -t ${sq(pane)} '#{window_name}\t#{pane_current_path}\t#{pane_title}' 2>/dev/null || echo __GONE__; echo __G2__; $T capture-pane -p -J -t ${sq(pane)} -S -300 2>/dev/null; true`);
+      const out = await run(`T=${tmux}; $T display -p -t ${sq(pane)} '#{window_name}\t#{pane_current_path}\t#{pane_title}' 2>/dev/null || echo __GONE__; echo __G2__; $T capture-pane -p -J -t ${sq(pane)} -S -120 2>/dev/null; true`); // the screen plus some scrollback to swipe back through
       const [head, body = ''] = out.split('__G2__\n');
       if (head.includes('__GONE__')) return { label: `${pane} (closed)`, lines: ['That pane has closed.'] };
       const [name, path = '', ...title] = head.replace(/\n$/, '').split('\t');
@@ -549,7 +554,7 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
     }
     if (id === 'vitals') return vitals();
     if (id === 'music') {
-      const m = await music();
+      const m = await musicNow();
       if (m.error) return { label: 'Spotify', lines: [musicHint(m.error)] };
       return { label: `Spotify · ${m.state}`, lines: [m.track, m.artist, m.album, '', `${bar(m.dur ? m.pos / m.dur : 0)} ${mmss(m.pos)} / ${mmss(m.dur)}`, '', `volume ${m.vol}%${m.shuffle ? ' · shuffle' : ''}`] };
     }
@@ -601,27 +606,38 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
   }
 
   // --- the catalog ----------------------------------------------------------------------
-  async function scan() {
+  // focus: the category the glasses show. Sources only it displays refresh
+  // while it's selected; otherwise the last value is kept (agents and alerts
+  // are always fresh). No focus (an older app) refreshes everything.
+  async function scan(focus) {
     const items = new Map();
     const add = (cat, item) => { items.set(item.id, item); cat.items.push(item); };
     const cfg = settings();
     const safe = (p, fallback) => p.catch(() => fallback);
-    const [{ panes }, base, projs, noteList, devices, ctrs] = await Promise.all([
+    const on = (...ids) => !focus || ids.includes(focus);
+    const ttl = (ms, ...ids) => (on(...ids) ? ms : Infinity); // Infinity: keep the last value (fetched once if none)
+    const [{ panes }, appsOut, sysOut, projs, noteList, devices, ctrs] = await Promise.all([
       scanPanes(),
-      sh([
+      cached('apps', ttl(4000, 'running', 'apps', 'music'), () => sh([
         'echo __RUNNING__',
         `for a in $(lsappinfo visibleProcessList | grep -oE 'ASN:0x[0-9a-f]+-0x[0-9a-f]+-'); do lsappinfo info -only bundlepath "\${a%-}:"; done | sed -n 's/.*="\\(.*\\)"/\\1/p'`,
         'echo __APPS__',
         // find, not globs: zsh (the login shell over ssh) aborts on a glob with no match
         `find ${APP_DIRS.join(' ')} -maxdepth 1 -name '*.app' ! -name '.*' 2>/dev/null`,
+        'true',
+      ].join('\n'))),
+      cached('sys', ttl(4000, 'system'), () => sh([
         'echo __SYS__',
         'sysctl -n vm.loadavg', 'uptime', 'df -h / | tail -1',
         `osascript -e 'set v to get volume settings' -e '(output volume of v as text) & " " & (output muted of v as text)' 2>/dev/null`,
         'echo __CLIP__', 'pbpaste 2>/dev/null | head -c 200 | tr "\\n\\t" "  "; echo',
         'true',
-      ].join('\n')),
-      safe(projects(), []), safe(notes(), []), safe(tailnet(), []), safe(containers(), []),
+      ].join('\n'))),
+      safe(projects(ttl(60_000, 'projects')), []), safe(notes(ttl(60_000, 'notes')), []),
+      safe(tailnet(ttl(15_000, 'network')), []), safe(containers(ttl(10_000, 'network', 'running')), []),
     ]);
+    const base = `${appsOut}\n${sysOut}`;
+    const music = () => musicNow(ttl(2000, 'music'));
     const parts = {};
     let cur = '';
     for (const line of base.split('\n')) {
@@ -857,8 +873,8 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
 
   return {
     /** Fresh catalog, actions stripped (safe to send to clients). */
-    async list() {
-      const cats = await scan();
+    async list(focus) {
+      const cats = await scan(focus);
       return cats.map((c) => ({ ...c, items: c.items.map(({ actions, ...i }) => ({ ...i, actions: actions.map(({ id, label, confirm, needs }) => ({ id, label, confirm, needs })) })) }));
     },
     /** Run an action offered by the latest scan: { message?, view?, ask? }. */

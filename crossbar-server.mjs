@@ -26,7 +26,7 @@ const SNAP_QUESTION = 'Look at this image and tell me what is relevant to what w
 const crossbar = createCrossbar({ run, tmux: TMUX, onAlert });
 const send = (ws, msg) => ws.readyState === 1 && ws.send(JSON.stringify(msg));
 const broadcast = (msg) => { for (const c of wss.clients) send(c, msg); };
-const sendList = (ws) => crossbar.list().then(
+const sendList = (ws) => crossbar.list(ws.focus).then(
   (categories) => send(ws, { type: 'crossbar', categories }),
   (e) => send(ws, { type: 'crossbar', error: e.message.split('\n')[0] }));
 
@@ -40,7 +40,13 @@ async function pollViews() {
     for (const [ws, v] of views) {
       const frame = await crossbar.view(v.id).catch((e) => ({ label: v.id, lines: [`mac: ${e.message.split('\n')[0]}`] }));
       const key = JSON.stringify(frame);
-      if (views.get(ws) === v && key !== v.key) { v.key = key; send(ws, { type: 'frame', target: v.id, ...frame }); }
+      if (views.get(ws) !== v || key === v.key) continue;
+      // Each frame is a Bluetooth write to the glasses: at most one per 1.5 s, and a
+      // change that's only a spinner or a ticking timer ("Working (12s") waits 5 s.
+      const since = Date.now() - (v.sent ?? 0), gist = key.replace(/\d+/g, '#').replace(/[\u2800-\u28ff✻✽✶✳✢◐◓◑◒]/g, '*');
+      if (since < 1500 || (gist === v.gist && since < 5000)) continue;
+      Object.assign(v, { key, gist, sent: Date.now() });
+      send(ws, { type: 'frame', target: v.id, ...frame });
     }
   } finally { polling = false; }
 }
@@ -168,7 +174,7 @@ wss.on('connection', (ws) => {
     if (isBinary) { asks.get(ws)?.seg.push(Buffer.isBuffer(data) ? data : Buffer.concat(data)); return; } // glasses mic PCM
     let msg;
     try { msg = JSON.parse(data); } catch { return; }
-    if (msg.type === 'crossbar') sendList(ws);
+    if (msg.type === 'crossbar') { if (msg.focus) ws.focus = msg.focus; sendList(ws); }
     else if (msg.type === 'papers') send(ws, { type: 'papers', papers });
     else if (msg.type === 'setup') send(ws, setupInfo());
     else if (msg.type === 'setup-feed') {
@@ -183,7 +189,7 @@ wss.on('connection', (ws) => {
       const fail = (e) => send(ws, { type: 'crossbar-result', ok: false, message: e.message.split('\n')[0] });
       if (!pane) return fail(new Error('not viewing a pane'));
       console.log(`[${msg.type}] ${pane} <- ${msg.type === 'type' ? JSON.stringify(String(msg.text ?? '').slice(0, 200)) : msg.type === 'key' ? msg.key : `option ${msg.index}`}`);
-      const done = (r) => { if (r?.message) send(ws, { type: 'crossbar-result', ok: true, message: r.message }); pollViews(); };
+      const done = (r) => { if (r?.message) send(ws, { type: 'crossbar-result', ok: true, message: r.message }); const v = views.get(ws); if (v) v.sent = 0; pollViews(); }; // show the result now, not after the throttle
       if (msg.type === 'key') crossbar.sendKey(pane, String(msg.key)).then(done, fail);
       else if (msg.type === 'type') crossbar.typeInto(pane, String(msg.text ?? ''), msg.enter !== false).then(() => done({ message: msg.enter === false ? 'typed' : 'sent' }), fail);
       else crossbar.answer(pane, Number(msg.index), String(msg.sig)).then(done, fail);
