@@ -8,7 +8,7 @@ Battery: fewer Bluetooth writes to the glasses, and less work on the Mac.
 
 - **Fixed:** in a Claude view, the session title Claude draws into its input box's top border showed there as well as in the header. That border line is dropped, and the line goes to output.
 - **Changed:** sliding text (the top bar's titles, a view's header) steps a word about once a second instead of 3 characters every 0.4 s, and rests at its start after a minute without input, until the next swipe or tap.
-- **Changed:** minimized, the paper's title shows whole (up to 4 lines) and the next comes every 16 s; it no longer slides.
+- **Changed:** minimized, the paper's title shows whole (up to 4 lines) and the next comes every 10 s; it no longer slides.
 - **Changed:** an open agent view is redrawn at most every 1.5 s, and a change that's only a spinner or a ticking timer waits 5 s. The Mac captures 120 lines of scrollback instead of 300.
 - **Changed:** the category list refreshes every 10 s instead of 5 s, and not at all while minimized (alerts still arrive). The Mac re-reads system stats, apps, Spotify, Docker, projects and notes only while their category is on screen.
 
