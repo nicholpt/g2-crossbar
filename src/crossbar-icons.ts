@@ -97,7 +97,7 @@ const ICONS: Record<string, Draw> = {
 const canvas = document.createElement('canvas');
 let clearBg = false;
 
-type Opts = { dim?: boolean; badge?: number; clear?: boolean };
+type Opts = { dim?: boolean; badge?: number; clear?: boolean; ring?: boolean }; // ring: a rounded outline (the focused category)
 
 function paint(id: string, size: number, opts: Opts) {
   canvas.width = size; canvas.height = size;
@@ -106,7 +106,7 @@ function paint(id: string, size: number, opts: Opts) {
   if (opts.clear) g.clearRect(0, 0, size, size);
   else { g.fillStyle = '#000'; g.fillRect(0, 0, size, size); }
   const ink = opts.dim ? '#7a7a7a' : '#ffffff';
-  const inset = size * 0.08; // breathing room inside the image
+  const inset = size * (opts.ring ? 0.2 : 0.08); // breathing room inside the image (more inside a ring)
   const s = (size - inset * 2) / 24;
   g.save();
   g.translate(inset, inset);
@@ -118,6 +118,12 @@ function paint(id: string, size: number, opts: Opts) {
   g.lineJoin = 'round';
   (ICONS[id] ?? ICONS.apps)(g);
   g.restore();
+  if (opts.ring) {
+    g.strokeStyle = ink;
+    g.lineWidth = 2;
+    rr(g, 1, 1, size - 2, size - 2, size * 0.24);
+    g.stroke();
+  }
   if (opts.badge) {
     // iOS-style count badge, top-right
     const r = Math.max(7, size * 0.17);
