@@ -378,12 +378,21 @@ function termBody(): string {
   return ['─'.repeat(Math.floor(566 / (getTextWidth('─') || 10))), ...rows.slice(start, start + n)].join('\n');
 }
 // "Claude - Opus 5.5 high · ~/Documents · tidy the release notes     Idle":
-// what the agent is working on (its terminal title) after the label; when that
-// doesn't fit, it alone slides sideways.
-const subjectSlide = { text: '', at: 0 };
-let subjectSliding = false; // the open view's subject is wider than its room
+// what the agent is working on (its terminal title) after the label. When
+// both don't fit beside the state, they share the room (each up to about
+// half) and whichever overflows its own part slides sideways in it.
+const headSlides = { name: { text: '', at: 0 }, subject: { text: '', at: 0 } };
+let headSliding = false; // part of the open view's header is sliding
+function slideIn(sl: { text: string; at: number }, text: string, room: number): string {
+  if (getTextWidth(text) <= room) return text;
+  if (sl.text !== text) { sl.text = text; sl.at = Date.now(); } // reset when a view opens
+  let r = slid(text, room, sl.at);
+  if (r.over) { sl.at = Date.now(); r = slid(text, room, sl.at); }
+  headSliding = true;
+  return r.text;
+}
 function termHead(): string {
-  subjectSliding = false;
+  headSliding = false;
   let pos = '';
   if (frame?.top && frame.target === viewing) { // "2 of 5" for documents (agents' screens follow the bottom)
     const rows = wrap(frame.lines, 566).length, n = VIEW_ROWS - 2 - (keymode ? 1 : 0);
@@ -398,14 +407,13 @@ function termHead(): string {
   if (toastText()) return fit(toastText(), 566);
   if (hint) return fit(hint, 566);
   const subject = frame?.target === viewing ? frame.subject ?? '' : '';
-  const room = 566 - getTextWidth(`${name} · `) - (state ? getTextWidth(state) + 24 : 0) - 6;
-  if (!subject || room < 80) return spread(name, state, 566);
-  if (getTextWidth(subject) <= room) return spread(`${name} · ${subject}`, state, 566);
-  if (subjectSlide.text !== subject) { subjectSlide.text = subject; subjectSlide.at = Date.now(); } // reset when a view opens
-  let r = slid(subject, room, subjectSlide.at);
-  if (r.over) { subjectSlide.at = Date.now(); r = slid(subject, room, subjectSlide.at); }
-  subjectSliding = true;
-  return spread(`${name} · ${r.text}`, state, 566);
+  if (!subject) return spread(name, state, 566);
+  const room = 566 - (state ? getTextWidth(state) + 24 : 0) - getTextWidth(' · ') - 6;
+  const nw = getTextWidth(name), sw = getTextWidth(subject);
+  const nameRoom = nw + sw <= room ? nw : Math.min(nw, Math.max(room / 2, room - sw));
+  // a sliding name is padded to its part, so the subject doesn't move with it
+  const left = nw > nameRoom ? `${padTo(slideIn(headSlides.name, name, nameRoom), nameRoom)}· ` : `${name} · `;
+  return spread(left + slideIn(headSlides.subject, subject, room - nameRoom), state, 566);
 }
 
 // Minimized: the bottom-left quarter of the display. Its bottom line is the
@@ -702,7 +710,7 @@ function connect() {
       papers = msg.papers ?? [];
     } else if (msg.type === 'crossbar-result') {
       if (!msg.ask) say(msg.ok ? msg.message : `failed: ${msg.message}`);
-      if (msg.ok && msg.view) { viewing = msg.view; scroll = 0; level = 'view'; frame = null; keymode = false; viewOpened = Date.now(); subjectSlide.text = ''; }
+      if (msg.ok && msg.view) { viewing = msg.view; scroll = 0; level = 'view'; frame = null; keymode = false; viewOpened = Date.now(); headSlides.name.text = headSlides.subject.text = ''; }
     } else if (msg.type === 'frame') {
       if (frame?.target !== msg.target) scroll = 0;
       frame = msg;
@@ -739,8 +747,8 @@ function connect() {
 setInterval(() => { if ((level !== 'view' && level !== 'menu' && !ask) || mini) send({ type: 'crossbar' }); }, 5000);
 // the scrolling paper title in the top bar (renders only send what changed)
 setInterval(() => { if (papers.length && (mini ? !reading : page === 'crossbar' || page === 'home')) renderGlasses(); }, STEP_MS);
-// an agent's subject sliding in its view's header (only the header is resent)
-setInterval(() => { if (subjectSliding && !mini && (page === 'term' || page === 'termkeys')) renderGlasses(); }, STEP_MS);
+// a view's header sliding (only the header is resent)
+setInterval(() => { if (headSliding && !mini && (page === 'term' || page === 'termkeys')) renderGlasses(); }, STEP_MS);
 // toasts, the clock and Ask's countdown / result
 setInterval(() => {
   if (toast.text && Date.now() > toast.until) toast = { text: '', until: 0 };
