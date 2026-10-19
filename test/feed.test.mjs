@@ -45,3 +45,10 @@ test('garbage in, nothing out', () => {
   assert.deepEqual(parseFeed('<html><body>not a feed</body></html>'), []);
   assert.deepEqual(parseFeed(''), []);
 });
+
+test('tags in a title are stripped completely; escaped ones stay as text', () => {
+  const [item] = parseFeed('<rss><channel><item><title><![CDATA[<b>Bold</b> <<i>i>talic &lt;script&gt; ok]]></title></item></channel></rss>');
+  assert.ok(!/<[a-z/][^>]*>/i.test(item.title.replace('<script>', '')), item.title); // no markup left but the escaped one
+  assert.match(item.title, /^Bold /);
+  assert.ok(item.title.includes('<script>')); // the text "&lt;script&gt;" is shown as written, never run (titles are text)
+});

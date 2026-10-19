@@ -46,15 +46,21 @@ const BUILT = (import.meta.env.VITE_CROSSBAR_ADDR as string | undefined) || ''; 
 /** The bridge's WebSocket URL for an address, with the saved pairing code. */
 const toWs = (addr: string, key = code) => toWsFor(addr, key);
 const address = () => saved || BUILT;
-const wsUrl = () => params.get('ws') || (served ? `ws://${location.host}/ws` : toWs(address()));
+// ?ws= is for the simulator and development: only a bridge on this machine, so a
+// link can't point the app at someone else's server
+const devWs = (() => {
+  const w = params.get('ws') || '';
+  try { return /^wss?:$/.test(new URL(w).protocol) && ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(w).hostname) ? w : ''; } catch { return ''; }
+})();
+const wsUrl = () => devWs || (served ? `ws://${location.host}/ws` : toWs(address()));
 // nothing to connect to yet, or a home-network Mac without its pairing code
-const needsSetup = () => !wsUrl() || (!params.get('ws') && !served && isHome(address()) && !code);
+const needsSetup = () => !wsUrl() || (!devWs && !served && isHome(address()) && !code);
 const $ = (id: string) => document.getElementById(id)!;
 
 // --- state ---------------------------------------------------------------------
 let cats: Cat[] = [];
 let ci = -1; // set to Agents on first load
-const itemIdx: Record<string, number> = {};
+const itemIdx = new Map<string, number>(); // category id -> selected item (ids come from the bridge)
 let level: Level = 'bar';
 let mi = 0; // option-menu cursor
 let armed = ''; // confirm-required action selected once, waiting for a second select
@@ -75,7 +81,7 @@ let pendingText: { item: string; action: string; label: string } | null = null; 
 
 const cat = () => cats[ci];
 const items = () => cat()?.items ?? [];
-const ii = () => Math.min(itemIdx[cat()?.id] ?? 0, Math.max(0, items().length - 1));
+const ii = () => Math.min(itemIdx.get(cat()?.id) ?? 0, Math.max(0, items().length - 1));
 const item = (): Item | undefined => items()[ii()];
 const say = (text: string, ms = 2500) => { toast = { text, until: Date.now() + ms }; render(); };
 const toastText = () => (toast.text && Date.now() < toast.until ? toast.text : '');
@@ -87,7 +93,7 @@ const dismissAsk = () => { ask = null; render(); };
 function moveCat(d: number) { if (cats.length) { ci = (ci + d + cats.length) % cats.length; render(); refreshSoon(); } }
 function moveItem(d: number) {
   const n = items().length;
-  if (n) { itemIdx[cat().id] = Math.max(0, Math.min(n - 1, ii() + d)); render(); }
+  if (n) { itemIdx.set(cat().id, Math.max(0, Math.min(n - 1, ii() + d))); render(); }
 }
 function openMenu() {
   const it = item();
@@ -170,7 +176,7 @@ function step(d: number) {
 function jumpTo(catId: string) {
   const k = cats.findIndex((c) => c.id === catId);
   if (k < 0) return;
-  ci = k; itemIdx[catId] = 0; level = 'items'; render();
+  ci = k; itemIdx.set(catId, 0); level = 'items'; render();
 }
 
 // --- photos (Snap) ---------------------------------------------------------------------
@@ -619,7 +625,7 @@ function renderPhone() {
     b.querySelector('.sub')!.textContent = it.sub;
     b.onclick = () => {
       if (k === i && level !== 'bar') openMenu();
-      else { itemIdx[cat().id] = k; level = 'items'; render(); }
+      else { itemIdx.set(cat().id, k); level = 'items'; render(); }
     };
     return b;
   }));
@@ -717,7 +723,7 @@ function connect() {
       ci = cats.findIndex((c) => c.id === (keep ?? 'agents'));
       if (ci < 0) ci = Math.max(0, cats.findIndex((c) => c.id === 'agents'));
       const k = items().findIndex((it) => it.id === keepItem); // stay on the same item as the list changes
-      if (k >= 0) itemIdx[cat().id] = k;
+      if (k >= 0) itemIdx.set(cat().id, k);
       if (level === 'menu' && k < 0) level = 'items';
     } else if (msg.type === 'papers') {
       papers = msg.papers ?? [];

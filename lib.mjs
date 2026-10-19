@@ -9,8 +9,8 @@
 //                        every request needs the pairing code (CROSSBAR_KEY)
 // Either way, this Mac itself is also served on 127.0.0.1 (browser, simulator).
 import { execFile, execFileSync } from 'node:child_process';
-import { readFileSync, existsSync, statSync } from 'node:fs';
-import { join, extname, normalize } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, extname, normalize, sep } from 'node:path';
 import { timingSafeEqual, createHash } from 'node:crypto';
 
 // tmux writes "_" for tabs and for non-ASCII ("❯", "─", "✳") unless the locale is
@@ -95,11 +95,15 @@ export function serveStatic(dir, index) {
     if (!(await authorize(req))) { res.writeHead(403).end('forbidden'); return; }
     const url = new URL(req.url, 'http://x');
     const file = normalize(join(dir, url.pathname === '/' ? index : url.pathname));
-    if (!file.startsWith(dir) || !existsSync(file) || !statSync(file).isFile()) { res.writeHead(404).end(); return; }
+    let body;
+    try { // read once (a folder or a missing file throws): nothing to change between a check and the read
+      if (!file.startsWith(dir + sep)) throw new Error('outside');
+      body = readFileSync(file);
+    } catch { res.writeHead(404).end(); return; }
     const headers = { 'content-type': MIME[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' };
     const key = url.searchParams.get('key');
     if (key) headers['set-cookie'] = `crossbar_key=${encodeURIComponent(key)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000`;
     res.writeHead(200, headers);
-    res.end(readFileSync(file));
+    res.end(body);
   };
 }
