@@ -4,6 +4,7 @@ The Release workflow publishes the section for the tagged version as the release
 
 ## Unreleased
 
+- TypeScript 7 for type checking. Even's packaging tool (`@evenrealities/evenhub-cli` 0.1.14) still declares TypeScript 5 as a peer but never loads it, so `package.json` overrides that peer.
 - **Read the papers while minimized.** Long press now shrinks Crossbar to the bottom-left corner. The feed's titles slide by over a bottom line with the time, agents needing you, the paper's number and the battery. Swipe for the previous or next title, or double-tap for the previous one. Tap one to read it: the corner (a quarter of the screen) fills with its title, authors, category and abstract, and swiping scrolls it. Double-tap goes back to the titles. Only long press restores the full view now (double-tap used to as well). The bridge now reads each item's abstract (RSS description), authors and category, with arXiv's TeX turned into plain text.
 - **What the agent is working on, in its header.** The terminal title an agent sets (Claude's "✳ deepseek disk space cleanup", Codex's "Enable YOLO mode | Documents") shows after the folder: "Claude - Opus 5.5 high · ~/Documents · deepseek disk space cleanup". When it doesn't fit, only it slides sideways; the header is now its own display area, so that only resends one line.
 - **Claude's screen drops its footer noise.** The token count and update notices ("current: 2.1.302 · latest: 2.1.303 ✔ Update installed · Restart to update", "Update available") are hidden when you open Claude, which frees a line for its output.
