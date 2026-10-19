@@ -245,7 +245,7 @@ export function withoutModelLine(agent, screen) {
 }
 
 // What the agent says it's working on, from the terminal title it sets:
-// Claude "✳ deepseek disk space cleanup", Codex "⠋ Enable YOLO mode | Documents".
+// Claude "✳ tidy the release notes", Codex "⠋ Enable YOLO mode | Documents".
 // Without its status glyph or spinner and Codex's "| folder" (the header shows
 // the folder); tmux's default title (the host name) or a bare agent name is no subject.
 export function paneSubject(title, path = '', host = hostname()) {

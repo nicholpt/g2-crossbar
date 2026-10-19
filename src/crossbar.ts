@@ -377,7 +377,7 @@ function termBody(): string {
   else start = Math.max(0, rows.length - scroll - n);
   return ['─'.repeat(Math.floor(566 / (getTextWidth('─') || 10))), ...rows.slice(start, start + n)].join('\n');
 }
-// "Claude - Opus 5.5 high · ~/Documents · deepseek disk space cleanup     Idle":
+// "Claude - Opus 5.5 high · ~/Documents · tidy the release notes     Idle":
 // what the agent is working on (its terminal title) after the label; when that
 // doesn't fit, it alone slides sideways.
 const subjectSlide = { text: '', at: 0 };
