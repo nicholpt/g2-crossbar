@@ -2,6 +2,10 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
+## Unreleased
+
+- **Fixed:** an agent's subject was dropped from its header when the name, model, folder and state left under 80 px (often, with a long model or folder), and squeezed to a few characters otherwise. The two parts now share the room, each up to about half, and whichever doesn't fit its part slides sideways in it.
+
 ## 1.0.3
 
 - **Read the papers while minimized.** Long press now shrinks Crossbar to the bottom-left corner. The feed's titles slide by over a bottom line with the time, agents needing you, the paper's number and the battery. Swipe for the previous or next title, or double-tap for the previous one. Tap one to read it: the corner (a quarter of the screen) fills with its title, authors, category and abstract, and swiping scrolls it. Double-tap goes back to the titles. Only long press restores the full view now (double-tap used to as well). The bridge now reads each item's abstract (RSS description), authors and category, with arXiv's TeX turned into plain text.
