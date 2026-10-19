@@ -75,7 +75,7 @@ let papers = []; // { title, source } (named for the arXiv default; any feed's i
 async function fetchFeeds() {
   const { urls, max } = feedSettings();
   const lists = await Promise.all(urls.map((u) => fetch(u, { signal: AbortSignal.timeout(30_000) })
-    .then((r) => r.text()).then(parseFeed, (e) => { console.log(`[feed] ${u}: ${e.message}`); return []; })));
+    .then((r) => r.text()).then(parseFeed).catch((e) => { console.log(`[feed] ${u}: ${e.message}`); return []; })));
   // interleave feeds so one busy feed doesn't drown the others
   const next = [];
   for (let i = 0; next.length < max && lists.some((l) => l[i]); i++) for (const l of lists) if (l[i] && next.length < max) next.push(l[i]);

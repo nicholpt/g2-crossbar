@@ -390,13 +390,14 @@ function termView(): string {
 // change the bottom line for a moment; they never reopen the full screen.
 const MINI_W = 270, MINI_ROWS = 4; // paper lines above the bottom line
 let reading = false; // minimized and reading a paper (else its titles slide by)
-const reader = { off: 0 };
+const reader: { off: number; paper?: (typeof papers)[number] } = { off: 0 }; // the open paper, kept even if the feed refreshes
 function paperLines(): string[] {
-  const p = papers[ticker.i % papers.length];
+  const p = reader.paper ?? papers[ticker.i % papers.length];
   const authors = p.authors?.split(', ') ?? [];
   const who = authors.length > 1 ? `${authors[0].split(' ').pop()} et al.` : authors[0];
   const w = (s: string) => wrap([s], MINI_W).map((l) => l.trimStart());
-  return [...w(p.title), ...w([who, p.cat].filter(Boolean).join(' · ')), ...(p.summary ? w(p.summary) : [])];
+  const byline = [who, p.cat].filter(Boolean).join(' · ');
+  return [...w(p.title), ...(byline ? w(byline) : []), ...(p.summary ? w(p.summary) : [])];
 }
 function miniTag(): Line {
   const t = toastText();
@@ -777,7 +778,7 @@ function onInput(type: OsEventTypeList | undefined) {
       else if (papers.length) { ticker.i = (ticker.i + d + papers.length) % papers.length; ticker.at = Date.now(); }
       render();
     } else if (type === OsEventTypeList.CLICK_EVENT && papers.length && !reading) {
-      reading = true; reader.off = 0;
+      reading = true; reader.off = 0; reader.paper = papers[ticker.i % papers.length];
       render();
     }
     else if (type === OsEventTypeList.FOREGROUND_ENTER_EVENT) { shown = {}; connect(); send({ type: 'crossbar' }); render(); }

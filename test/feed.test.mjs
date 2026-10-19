@@ -32,6 +32,15 @@ test('arXiv API (Atom): abstract with its TeX as plain text, authors and primary
   assert.equal(a.cat, 'cs.RO');
 });
 
+test('untrusted text: prices stay, bad entities and prototype names are harmless, long items capped', () => {
+  const item = (summary, title = 'T') => parseFeed(`<feed><title>F</title><entry><title>${title}</title><summary>${summary}</summary></entry></feed>`)[0];
+  assert.equal(item('Costs $5 vs $10 a month').summary, 'Costs $5 vs $10 a month');
+  assert.equal(item('A &amp;#99999999999; B &#xFFFFFFFF; C').summary, 'A &#99999999999; B &#xFFFFFFFF; C');
+  assert.equal(item('$\\constructor$ and $\\toString$').summary, 'constructor and toString');
+  assert.equal(item('x'.repeat(5000), 'y'.repeat(900)).summary.length, 2000);
+  assert.equal(item('s', 'y'.repeat(900)).title.length, 300);
+});
+
 test('garbage in, nothing out', () => {
   assert.deepEqual(parseFeed('<html><body>not a feed</body></html>'), []);
   assert.deepEqual(parseFeed(''), []);
