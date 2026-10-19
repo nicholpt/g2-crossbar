@@ -45,7 +45,8 @@ From the Even Hub simulator, with demo agents and projects.
   you put them back on.
 - **Agents**: every tmux pane running one of your agents, with its state and time
   ("Working · 12 min"). View it live, headed with its model, effort and folder
-  ("codex - GPT-6.1-Sol ultra · ~/Documents"); answer prompts, use a key strip
+  ("codex - GPT-6.1-Sol ultra · ~/Documents") and what it says it's working on (its
+  terminal title, sliding sideways when it doesn't fit); answer prompts, use a key strip
   (↑ ↓ Tab Enter Esc 1 2 3 y n Space Bksp ^C), **Ask** by voice (typed in after 3 s; tap
   cancels), **Snap** a photo or send one from your library to the agent, send quick
   prompts, Esc, Ctrl-C, end the agent, or start a new one.

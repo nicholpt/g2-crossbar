@@ -4,6 +4,7 @@ The Release workflow publishes the section for the tagged version as the release
 
 ## Unreleased
 
+- **What the agent is working on, in its header.** The terminal title an agent sets (Claude's "✳ deepseek disk space cleanup", Codex's "Enable YOLO mode | Documents") shows after the folder: "Claude - Opus 5.5 high · ~/Documents · deepseek disk space cleanup". When it doesn't fit, only it slides sideways; the header is now its own display area, so that only resends one line.
 - **Claude's screen drops its footer noise.** The token count and update notices ("current: 2.1.302 · latest: 2.1.303 ✔ Update installed · Restart to update", "Update available") are hidden when you open Claude, which frees a line for its output.
 - **Tab moved next to Enter** in the glasses key strip: ↑ ↓ Tab Enter Esc 1 2 3 y n Space Bksp ^C.
 - **The model, effort and folder moved to the agent's screen.** Open an agent and its header reads `codex - GPT-6.1-Sol ultra · ~/Documents` next to its state. The agent's own footer line with the same details is hidden, so you get one more line of its output. The Agents list is back to plain agent names.

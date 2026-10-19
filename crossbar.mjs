@@ -4,7 +4,7 @@
 // on the Mac); actions only resolve against the latest scan, so clients can
 // only ask for things the catalog itself offered.
 import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, openSync, readSync, closeSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { join, basename, dirname } from 'node:path';
 import { clean } from './text.mjs';
 
@@ -242,6 +242,18 @@ export function withoutModelLine(agent, screen) {
   const lines = screen.split('\n');
   const i = modelLineAt(agent, lines);
   return i < 0 ? screen : [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n');
+}
+
+// What the agent says it's working on, from the terminal title it sets:
+// Claude "✳ deepseek disk space cleanup", Codex "⠋ Enable YOLO mode | Documents".
+// Without its status glyph or spinner and Codex's "| folder" (the header shows
+// the folder); tmux's default title (the host name) or a bare agent name is no subject.
+export function paneSubject(title, path = '', host = hostname()) {
+  let t = title.trim().replace(/^[^\p{L}\p{N}(\[]+\s+/u, '');
+  const folder = basename(path);
+  if (folder && t.endsWith(` | ${folder}`)) t = t.slice(0, -` | ${folder}`.length).trimEnd();
+  if (!t || t === host || t === host.replace(/\.local$/, '') || /^(claude( code)?|codex|gemini|agy|antigravity|kimi)$/i.test(t)) return '';
+  return t;
 }
 
 // Claude Code's footer: its context size ("41622 tokens") and update notices
@@ -522,16 +534,17 @@ export function createCrossbar({ run, tmux, onAlert = () => {} }) {
   async function view(id) {
     if (id.startsWith('pane:')) {
       const pane = id.slice(5);
-      const out = await run(`T=${tmux}; $T display -p -t ${sq(pane)} '#{window_name}\t#{pane_current_path}' 2>/dev/null || echo __GONE__; echo __G2__; $T capture-pane -p -J -t ${sq(pane)} -S -300 2>/dev/null; true`);
+      const out = await run(`T=${tmux}; $T display -p -t ${sq(pane)} '#{window_name}\t#{pane_current_path}\t#{pane_title}' 2>/dev/null || echo __GONE__; echo __G2__; $T capture-pane -p -J -t ${sq(pane)} -S -300 2>/dev/null; true`);
       const [head, body = ''] = out.split('__G2__\n');
       if (head.includes('__GONE__')) return { label: `${pane} (closed)`, lines: ['That pane has closed.'] };
-      const [name, path = ''] = head.trim().split('\t');
+      const [name, path = '', ...title] = head.replace(/\n$/, '').split('\t');
       const agent = watch.get(pane)?.agent;
       if (!agent) return { label: name || pane, lines: clean(body), decision: parseDecision(body) ?? undefined };
       // "codex - GPT-6.1-Sol ultra · ~/Documents" in the header, so its own footer line can go
       const label = `${agent} - ${[modelOf({ id: pane, agent, path, screen: body }), path.replace(HOME, '~')].filter(Boolean).join(' · ')}`;
       const shown = agent === 'claude' ? withoutClaudeStatus(body) : withoutModelLine(agent, body);
-      return { label, lines: clean(shown), decision: parseDecision(body) ?? undefined };
+      const subject = paneSubject(title.join('\t'), path) || undefined; // slides by itself in the header when it doesn't fit
+      return { label, subject, lines: clean(shown), decision: parseDecision(body) ?? undefined };
     }
     if (id === 'vitals') return vitals();
     if (id === 'music') {

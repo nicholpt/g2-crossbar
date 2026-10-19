@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { agentModel, claudeModel, withoutModelLine, withoutClaudeStatus } from '../crossbar.mjs';
+import { agentModel, claudeModel, withoutModelLine, withoutClaudeStatus, paneSubject } from '../crossbar.mjs';
 
 const screen = (name) => readFileSync(join(import.meta.dirname, 'fixtures', 'screens', `${name}.txt`), 'utf8');
 
@@ -53,4 +53,15 @@ test("Claude's pane view drops its token count and update notices", () => {
   const reply = '● We cut the prompt to 4000 tokens, and the wrapped\n  4000 tokens line after it\n  Update available for the lib, said the changelog';
   const working = '✻ Working… (12s · 3.4k tokens · esc to interrupt)';
   assert.equal(withoutClaudeStatus(`${reply}\n${working}\n\n${footer}`), `${reply}\n${working}\n\n  ⏵⏵ accept edits on (shift+tab to cycle)`);
+});
+
+test("an agent's subject comes from its terminal title", () => {
+  const host = 'studio.local';
+  assert.equal(paneSubject('✳ tidy the release notes', '/u/notes', host), 'tidy the release notes'); // Claude, idle
+  assert.equal(paneSubject('⠂ tidy the release notes', '/u/notes', host), 'tidy the release notes'); // Claude, working
+  assert.equal(paneSubject('⠋ Fix flaky login test | api', '/u/api', host), 'Fix flaky login test'); // Codex: its folder goes
+  assert.equal(paneSubject('Fix flaky login test | api', '/u/api', host), 'Fix flaky login test');
+  assert.equal(paneSubject('Compare a | b', '/u/api', host), 'Compare a | b'); // a "|" that isn't the folder stays
+  assert.equal(paneSubject('(draft) notes', '/u', host), '(draft) notes');
+  for (const none of [host, 'studio', 'claude', 'Claude Code', 'codex', '  ', '']) assert.equal(paneSubject(none, '/u', host), '', JSON.stringify(none));
 });
