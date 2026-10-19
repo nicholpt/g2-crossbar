@@ -2,12 +2,12 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
-## Unreleased
+## 1.0.6
 
-- **Changed:** the setup screen's feed suggestions come from the bridge, so the glasses app contains no URL besides the bridge's (Even's store review checks every URL in an app against its network whitelist).
 - **Fixed:** saving feeds twice in a row (adding one, then another) could leave only the first save's feeds on the glasses until the next refresh: its fetch could finish last and replace the newer list. Only the newest fetch updates the list now.
 - **Fixed:** installed with `bin/setup`, the bridge found no agents' names or states: started at login, it had no locale, and tmux then writes `_` for tabs and for characters like `❯` and `─`. The bridge now gives the commands it runs a UTF-8 locale, and `bin/setup` sets one for it too.
-- **Added:** a software bill of materials. [docs/SBOM.md](docs/SBOM.md) lists everything Crossbar ships, needs and connects to; `npm run sbom` writes it as CycloneDX JSON (npm's packages plus Node.js, tmux, Tailscale, whisper.cpp and the Whisper model with its SHA-256), and releases attach it with a signed SBOM attestation.
+- **Added:** a software bill of materials. `docs/SBOM.md` lists everything Crossbar ships, needs and connects to; `npm run sbom` writes it as CycloneDX JSON (npm's packages plus Node.js, tmux, Tailscale, whisper.cpp and the Whisper model with its SHA-256), and releases attach it with a signed SBOM attestation.
+- **Changed:** the setup screen's feed suggestions come from the bridge, so the glasses app contains no URL besides the bridge's (Even's store review checks every URL in an app against its network whitelist).
 - **Changed:** the docs say `brew install whisper.cpp`, Homebrew's current name (`whisper-cpp` still works).
 
 ## 1.0.5
