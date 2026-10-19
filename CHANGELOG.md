@@ -4,6 +4,8 @@ The Release workflow publishes the section for the tagged version as the release
 
 ## Unreleased
 
+- **Claude's screen drops its footer noise.** The token count and update notices ("current: 2.1.302 · latest: 2.1.303 ✔ Update installed · Restart to update", "Update available") are hidden when you open Claude, which frees a line for its output.
+- **Tab moved next to Enter** in the glasses key strip: ↑ ↓ Tab Enter Esc 1 2 3 y n Space Bksp ^C.
 - **The model, effort and folder moved to the agent's screen.** Open an agent and its header reads `codex - GPT-6.1-Sol ultra · ~/Documents` next to its state. The agent's own footer line with the same details is hidden, so you get one more line of its output. The Agents list is back to plain agent names.
 - **Fixed:** right after the list changed (say, once you answered an agent), the selected row could briefly show one item's title over the previous item's subtitle. They're now drawn as one, so they always change together.
 - CI/CD:

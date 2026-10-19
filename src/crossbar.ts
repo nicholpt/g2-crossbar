@@ -157,8 +157,8 @@ function select() {
 }
 const isPane = () => viewing.startsWith('pane:');
 const decision = () => (frame && frame.target === viewing ? frame.decision : undefined);
-const KEY_STRIP: [string, string][] = [['↑', 'up'], ['↓', 'down'], ['Enter', 'enter'], ['Esc', 'esc'], ['1', '1'], ['2', '2'], ['3', '3'],
-  ['y', 'y'], ['n', 'n'], ['Tab', 'tab'], ['Spc', 'space'], ['Bksp', 'bspace'], ['^C', 'ctrl-c']];
+const KEY_STRIP: [string, string][] = [['↑', 'up'], ['↓', 'down'], ['Tab', 'tab'], ['Enter', 'enter'], ['Esc', 'esc'], ['1', '1'], ['2', '2'],
+  ['3', '3'], ['y', 'y'], ['n', 'n'], ['Spc', 'space'], ['Bksp', 'bspace'], ['^C', 'ctrl-c']];
 function step(d: number) {
   if (level === 'bar') moveCat(d);
   else if (level === 'items') moveItem(d);

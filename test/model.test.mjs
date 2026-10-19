@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { agentModel, claudeModel, withoutModelLine } from '../crossbar.mjs';
+import { agentModel, claudeModel, withoutModelLine, withoutClaudeStatus } from '../crossbar.mjs';
 
 const screen = (name) => readFileSync(join(import.meta.dirname, 'fixtures', 'screens', `${name}.txt`), 'utf8');
 
@@ -39,4 +39,17 @@ test("the pane view drops the footer line that names the model (it's in the head
   }
   const claude = screen('claude-idle-answer');
   assert.equal(withoutModelLine('claude', claude), claude); // Claude's footer has no model
+});
+
+test("Claude's pane view drops its token count and update notices", () => {
+  for (const name of ['claude-idle-answer', 'claude-working', 'claude-idle-update-notice']) {
+    const before = screen(name).split('\n');
+    const after = withoutClaudeStatus(screen(name)).split('\n');
+    assert.equal(after.length, before.length - 1, `${name}: one line removed`);
+    assert.ok(!after.some((l) => /\btokens\s*$|latest:|Update installed|Restart to update/.test(l)), name);
+  }
+  // the rest of a shared line stays; a reply that mentions tokens is left alone
+  const footer = '  ⏵⏵ accept edits on (shift+tab to cycle)            41622 tokens · Update available! Run: claude update';
+  const reply = '● We cut the prompt to 4000 tokens';
+  assert.equal(withoutClaudeStatus(`${reply}\n\n${footer}`), `${reply}\n\n  ⏵⏵ accept edits on (shift+tab to cycle)`);
 });
