@@ -50,7 +50,7 @@ test('docs/SBOM.md lists every package in package.json, at its locked version', 
   const lock = JSON.parse(read('package-lock.json'));
   for (const name of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })) {
     const v = lock.packages[`node_modules/${name}`].version;
-    assert.match(doc, new RegExp(`\\| \`${name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\` \\| ${v.replace(/\./g, '\\.')} \\|`), `${name} ${v}`);
+    assert.ok(doc.includes(`| \`${name}\` | ${v} |`), `${name} ${v}`);
   }
 });
 
