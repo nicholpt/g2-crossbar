@@ -154,3 +154,12 @@ test('feeds saved twice quickly: the later save wins, even when the first fetch 
   assert.deepEqual(papers.map((p) => p.title).sort(), ['A headline', 'B headline']);
   later.ws.close();
 });
+
+test('the setup screen gets its feed suggestions from the bridge', { skip, timeout: 15_000 }, async () => {
+  const c = client();
+  await c.open;
+  c.send({ type: 'setup' });
+  const { presets } = await c.next((m) => m.type === 'setup');
+  assert.ok(presets.length >= 2 && presets.every(([name, url]) => name && /^https:\/\//.test(url)));
+  c.ws.close();
+});

@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -64,4 +64,11 @@ test('the SBOM has the npm packages and the system pieces, and one Whisper model
   for (const name of ['ws', '@evenrealities/even_hub_sdk', 'vite', 'Node.js', 'tmux', 'Tailscale', 'whisper.cpp']) assert.ok(names.has(name), name);
   const model = bom.components.find((c) => c.type === 'machine-learning-model');
   assert.ok(read('docs/SBOM.md').includes(model.hashes[0].content), 'docs/SBOM.md has the model hash bin/sbom.mjs records');
+});
+
+test('the built app names no URL: it only talks to the bridge (the store checks its whitelist against them)', () => {
+  const dir = join(ROOT, 'dist', 'assets');
+  const files = readdirSync(dir).map((f) => join(dir, f)).concat(join(ROOT, 'dist', 'crossbar.html'));
+  const urls = files.flatMap((f) => [...readFileSync(f, 'utf8').matchAll(/\b(?:https?|wss?):\/\/[\w.-]+/g)].map((m) => m[0]));
+  assert.deepEqual([...new Set(urls)], []);
 });
