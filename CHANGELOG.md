@@ -2,7 +2,7 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
-## Unreleased
+## 1.0.10
 
 - **Glasses freezing:** when the Bluetooth link drops a command, the glasses no longer wait for it forever (frozen while the phone carries on). After 5 seconds without an answer the phone says "Glasses not responding · reconnect Bluetooth", and the app keeps retrying, redrawing the glasses fully once they answer again.
 
