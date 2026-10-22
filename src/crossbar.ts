@@ -20,6 +20,7 @@ import {
 } from '@evenrealities/even_hub_sdk';
 import { getTextWidth, pxTruncate } from '@evenrealities/pretext';
 import { iconPng, iconUrl } from './crossbar-icons';
+import { answered, NoAnswer } from './answered';
 import { PORT, hostOf, isHome, toWs as toWsFor } from './address';
 
 type Action = { id: string; label: string; confirm?: boolean; needs?: 'mic' | 'camera' | 'album' | 'text' };
@@ -530,6 +531,12 @@ let page: Page | '' = '';
 let shown: Record<string, string> = {};
 let busy = false;
 let dirty = false;
+// Bluetooth trouble: a command the glasses never answer. Give up on it, say so
+// on the phone, and keep retrying with a full redraw until they answer again.
+const GLASSES_MS = 5000;
+const GLASSES_RETRY_MS = 3000;
+let glassesNote = '';
+let glassesRetry: ReturnType<typeof setTimeout> | undefined;
 
 // which icon each slot should show (key includes size/dim/badge, so unchanged slots aren't resent)
 function iconPlan() {
@@ -558,7 +565,7 @@ async function renderGlasses() {
     const want: Page = mini ? 'mini' : level === 'view' && !ask ? (keymode ? 'termkeys' : 'term')
       : level === 'bar' && cats.length && !needsSetup() && !ask ? 'home' : 'crossbar';
     if (page !== want) {
-      if (!(await bridge.rebuildPageContainer(new RebuildPageContainer(layout(want))))) throw new Error('page rebuild rejected');
+      if (!(await answered(bridge.rebuildPageContainer(new RebuildPageContainer(layout(want))), GLASSES_MS))) throw new Error('page rebuild rejected');
       page = want; shown = {};
     }
     const content: Record<string, Line> = want === 'mini' ? { mini: miniTag() } : want === 'term' ? { head: L(termHead(), 4), term: L(termBody(), 4) }
@@ -567,7 +574,7 @@ async function renderGlasses() {
       const v = value || ' ';
       if (shown[name] === `${color}|${v}`) continue;
       const c = C[name as keyof typeof C];
-      await bridge.textContainerUpgrade(new TextContainerUpgrade({ containerID: c.id, containerName: c.name, content: v, textColor: BRIGHT }));
+      await answered(bridge.textContainerUpgrade(new TextContainerUpgrade({ containerID: c.id, containerName: c.name, content: v, textColor: BRIGHT })), GLASSES_MS);
       shown[name] = `${color}|${v}`;
     }
     if (want === 'crossbar' || want === 'home') {
@@ -575,13 +582,20 @@ async function renderGlasses() {
       for (const { s, c, badge, ring, key } of iconPlan().sort((a, b) => Math.abs(a.s.d) - Math.abs(b.s.d))) {
         if (shown[s.name] === key) continue;
         const png = c ? iconPng(c.id, s.size, { badge, ring }) : blankPng(s.size);
-        const r = await bridge.updateImageRawData(new ImageRawDataUpdate({ containerID: s.id, containerName: s.name, imageData: png }));
+        const r = await answered(bridge.updateImageRawData(new ImageRawDataUpdate({ containerID: s.id, containerName: s.name, imageData: png })), GLASSES_MS);
         if (r === ImageRawDataUpdateResult.success) shown[s.name] = key;
         if (dirty) break; // the user moved on: redraw text for the new position first
       }
     }
+    if (glassesNote) { glassesNote = ''; renderPhone(); } // answering again
   } catch (e) {
-    $('status').textContent = `glasses: ${e}`;
+    if (e instanceof NoAnswer) {
+      glassesNote = 'Glasses not responding · reconnect Bluetooth';
+      page = ''; shown = {}; // what they show is unknown: redraw everything
+      clearTimeout(glassesRetry);
+      glassesRetry = setTimeout(() => renderGlasses(), GLASSES_RETRY_MS);
+      renderPhone();
+    } else $('status').textContent = `glasses: ${e}`;
   } finally {
     busy = false;
     if (dirty) { dirty = false; renderGlasses(); }
@@ -599,7 +613,7 @@ function blankFrom(size: number): number[] {
 
 // --- phone rendering ----------------------------------------------------------------
 function renderPhone() {
-  $('status').textContent = offline || (mini ? 'Glasses minimized · tap here to restore' : '');
+  $('status').textContent = offline || glassesNote || (mini ? 'Glasses minimized · tap here to restore' : '');
   $('clock').textContent = clock();
   $('notif').textContent = notification();
   $('batt').textContent = battery() ? `G2 ${battery()}` : '';
