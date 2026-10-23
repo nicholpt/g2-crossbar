@@ -45,8 +45,8 @@ Crossbar doesn't install these; `bin/setup` checks for them and says what's miss
 | Node.js 20+ | Required: runs the bridge | MIT | https://nodejs.org (`brew install node`) |
 | tmux | Required: where agents run; the bridge reads and types into panes | ISC | https://github.com/tmux/tmux (`brew install tmux`) |
 | Tailscale | Tailscale mode (not home mode) | BSD-3-Clause | https://tailscale.com |
-| whisper.cpp | Optional: voice Ask (`whisper-server`) | MIT | https://github.com/ggml-org/whisper.cpp (`brew install whisper.cpp`) |
-| Whisper `ggml-small.en.bin` | Optional: the model voice Ask uses (466 MB, English) | MIT | https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin, SHA-256 `c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d` (downloaded by `bin/setup` into `models/`) |
+| whisper.cpp | Optional: voice Ask and Subtitles (`whisper-server`) | MIT | https://github.com/ggml-org/whisper.cpp (`brew install whisper.cpp`) |
+| Whisper `ggml-small.en.bin` | Optional: the model voice Ask and Subtitles use (466 MB, English) | MIT | https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin, SHA-256 `c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d` (downloaded by `bin/setup` into `models/`) |
 
 ### Used if present
 

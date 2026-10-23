@@ -8,7 +8,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { WebSocketServer } from 'ws';
 import { createCrossbar } from './crossbar.mjs';
-import { Segmenter, transcribe } from './voice.mjs';
+import { Segmenter, Captioner, transcribe } from './voice.mjs';
 import { parseFeed } from './feed.mjs';
 import { TMUX, HOST, HOSTS, OWNER, MODE, addresses, authorize, run, serveStatic } from './lib.mjs';
 
@@ -27,7 +27,7 @@ const crossbar = createCrossbar({ run, tmux: TMUX, onAlert });
 const send = (ws, msg) => ws.readyState === 1 && ws.send(JSON.stringify(msg));
 const broadcast = (msg) => { for (const c of wss.clients) send(c, msg); };
 const sendList = (ws) => crossbar.list(ws.focus).then(
-  (categories) => send(ws, { type: 'crossbar', categories }),
+  (categories) => send(ws, { type: 'crossbar', categories: withSubtitles(ws, categories) }),
   (e) => send(ws, { type: 'crossbar', error: e.message.split('\n')[0] }));
 
 // --- live views, one per client ------------------------------------------------------
@@ -110,13 +110,42 @@ const FEED_PRESETS = [
   ['BBC News', 'https://feeds.bbci.co.uk/news/rss.xml'],
 ];
 function setupInfo() {
-  return { type: 'setup', version: VERSION, mode: MODE, ...addresses(), port: PORT, owner: OWNER, feed: feedSettings(), presets: FEED_PRESETS, whisper: !!process.env.WHISPER_MODEL || existsSync(join(import.meta.dirname, 'models')) };
+  return { type: 'setup', version: VERSION, mode: MODE, ...addresses(), port: PORT, owner: OWNER, feed: feedSettings(), presets: FEED_PRESETS, whisper: hasWhisper() };
 }
 function saveFeed(feed) {
   const urls = (Array.isArray(feed?.urls) ? feed.urls : []).map((u) => String(u).trim()).filter((u) => /^https?:\/\//.test(u)).slice(0, 10);
   const minutes = Math.min(1440, Math.max(5, Number(feed?.minutes) || FEED_DEFAULTS.minutes));
   writeFileSync(SETTINGS, `${JSON.stringify({ ...readSettings(), feed: { ...readSettings().feed, urls, minutes } }, null, 2)}\n`);
   scheduleFeeds();
+}
+
+// --- Subtitles: glasses mic → rolling Whisper captions in the glasses' top line -------
+// Per phone, switched in System. Nothing is saved: captions go to that phone only.
+const hasWhisper = () => !!process.env.WHISPER_MODEL || existsSync(join(import.meta.dirname, 'models'));
+const SUBS_IDLE = 5 * 60_000;
+const subs = new Map(); // ws -> Captioner
+function startSubs(ws) {
+  if (subs.has(ws)) return;
+  subs.set(ws, new Captioner((pcm) => transcribe(pcm, ''), (c) => send(ws, { type: 'subs', on: true, ...c }),
+    { idleMs: SUBS_IDLE, onIdle: () => stopSubs(ws, 'Subtitles off: no speech for 5 min') }));
+  send(ws, { type: 'subs', on: true });
+}
+function stopSubs(ws, reason) {
+  const c = subs.get(ws);
+  if (!c) return;
+  c.stop();
+  subs.delete(ws);
+  send(ws, { type: 'subs', on: false, reason });
+  sendList(ws);
+}
+// the switch, first in System (each phone's own)
+function withSubtitles(ws, categories) {
+  if (!hasWhisper()) return categories;
+  const on = subs.has(ws);
+  const item = { id: 'sys:subs', label: on ? 'Subtitles On' : 'Subtitles',
+    sub: on ? 'captions in the top line · off after 5 min without speech' : 'live captions of the conversation around you',
+    actions: [on ? { id: 'off', label: 'Turn Off' } : { id: 'on', label: 'Turn On' }] };
+  return categories.map((c) => (c.id === 'system' ? { ...c, items: [item, ...c.items] } : c));
 }
 
 // --- Ask: glasses mic → one utterance → Whisper → typed into an agent ----------------
@@ -182,9 +211,13 @@ const servers = hosts.map((host) => {
 });
 
 wss.on('connection', (ws) => {
-  ws.on('close', (code) => { views.delete(ws); asks.delete(ws); presence.delete(ws); console.log(`[ws] closed (${code})`); });
+  ws.on('close', (code) => { views.delete(ws); asks.delete(ws); subs.get(ws)?.stop(); subs.delete(ws); presence.delete(ws); console.log(`[ws] closed (${code})`); });
   ws.on('message', (data, isBinary) => {
-    if (isBinary) { asks.get(ws)?.seg.push(Buffer.isBuffer(data) ? data : Buffer.concat(data)); return; } // glasses mic PCM
+    if (isBinary) { // glasses mic PCM: an Ask has it first, subtitles pause meanwhile
+      const pcm = Buffer.isBuffer(data) ? data : Buffer.concat(data);
+      (asks.get(ws)?.seg ?? subs.get(ws))?.push(pcm);
+      return;
+    }
     let msg;
     try { msg = JSON.parse(data); } catch { return; }
     if (msg.type === 'crossbar') { if (msg.focus) ws.focus = msg.focus; sendList(ws); }
@@ -215,6 +248,11 @@ wss.on('connection', (ws) => {
         send(ws, { type: 'away', alerts: missed });
         missed = [];
       }
+    } else if (msg.type === 'crossbar-act' && msg.item === 'sys:subs') {
+      if (msg.action === 'on' && hasWhisper()) startSubs(ws);
+      else stopSubs(ws);
+      send(ws, { type: 'crossbar-result', item: msg.item, action: msg.action, ok: true, message: subs.has(ws) ? 'subtitles on' : 'subtitles off' });
+      sendList(ws);
     } else if (msg.type === 'crossbar-act') {
       const reply = (r) => send(ws, { type: 'crossbar-result', item: msg.item, action: msg.action, ...r });
       if (/^(alert:|pane:)/.test(String(msg.item))) console.log(`[act] ${msg.item} ${msg.action}`); // anything sent to an agent

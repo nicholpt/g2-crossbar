@@ -59,9 +59,13 @@ From the Even Hub simulator, with demo agents and projects.
 - **Music**: Spotify now playing, play/pause, next/previous, volume, shuffle.
 - **Network**: your tailnet devices (with ping) and Docker containers (logs, start,
   stop, restart).
-- **System**: live vitals (CPU/GPU/memory/network sparklines), the Mac's clipboard (view
-  it, copy text from your phone, paste it into an agent), volume, display sleep, log
-  tails, load/uptime/disk.
+- **System**: **Subtitles** (below), live vitals (CPU/GPU/memory/network sparklines), the
+  Mac's clipboard (view it, copy text from your phone, paste it into an agent), volume,
+  display sleep, log tails, load/uptime/disk.
+- **Subtitles**: live captions of the conversation around you, from the glasses mic, in
+  place of the headlines on the top line (minimized: the last few lines). Words appear
+  while they're said and settle when the speaker pauses. Off from the same item, or by
+  itself after 5 minutes without speech; an Ask pauses it.
 - **Top line**: the time, then headlines from any RSS/Atom feeds you choose (newest AI
   papers on arXiv by default), scrolling sideways when they're long, and the glasses'
   battery.
@@ -89,7 +93,7 @@ There's also a terminal version for the Mac itself: `npm run tui`.
 - Even G2 glasses and the Even app (2.2.10 or later)
 - A Mac (Apple silicon or Intel) with [Homebrew](https://brew.sh), Node.js 20+ and tmux
 - Either Tailscale on the Mac and your phone (same account), or both on the same home Wi-Fi
-- Optional: `whisper.cpp` for voice Ask, Spotify, Docker, Obsidian
+- Optional: `whisper.cpp` for voice Ask and Subtitles, Spotify, Docker, Obsidian
 
 ## Settings
 
@@ -134,8 +138,9 @@ Environment variables for the bridge (`bin/setup` writes them into the login ite
 - It can only run the actions its own catalog offers (open/quit apps, keys into agent
   panes, git pull --ff-only…); destructive ones ask for a second tap. Keys go only to the
   pane you're viewing.
-- Voice is transcribed on the Mac by whisper.cpp; photos are saved in `.run/snaps/` and
-  passed to the agent as a file path.
+- Voice is transcribed on the Mac by whisper.cpp; subtitles go only to the phone that
+  turned them on and aren't saved. Photos are saved in `.run/snaps/` and passed to the
+  agent as a file path.
 - Your agents can do whatever you've allowed them to do. Answering their prompts from the
   glasses is the same as answering them at the keyboard.
 
@@ -154,7 +159,7 @@ G2 glasses ⇄ Even app (phone: index.html + src/crossbar.ts) ──Tailscale─
 | `crossbar.mjs` | the catalog: what each category lists and what its actions do; prompt detection |
 | `crossbar-tui.mjs` | the same Crossbar in a terminal on the Mac |
 | `lib.mjs` | Tailscale binding and owner check, shell runner, static files |
-| `voice.mjs`, `text.mjs` | speech segmentation + Whisper; terminal text cleanup for the glasses font |
+| `voice.mjs`, `text.mjs` | speech segmentation + Whisper (Ask, Subtitles); terminal text cleanup for the glasses font |
 | `src/crossbar.ts`, `crossbar.html` | the app: glasses rendering, phone UI, setup screen |
 | `src/crossbar-icons.ts` | the category icons, drawn as images for the glasses |
 | `bin/setup` | one-time setup / update / `--uninstall` |

@@ -27,7 +27,7 @@ You need [Homebrew](https://brew.sh). Then:
 
 ```sh
 brew install node tmux
-brew install whisper.cpp        # optional: voice "Ask"
+brew install whisper.cpp        # optional: voice "Ask" and Subtitles
 ```
 
 **Tailscale only:** install it from [tailscale.com/download](https://tailscale.com/download)
@@ -127,6 +127,7 @@ and a toast appears. Open **Needs You**, or the agent itself, and pick the answe
 | For | Do |
 | --- | --- |
 | Voice **Ask** | `brew install whisper.cpp`, then re-run `bin/setup --yes` to download the model. On the glasses: an agent → **Ask** → speak. |
+| **Subtitles** | The same Whisper setup. On the glasses: System → **Subtitles** → **Turn On**. |
 | **Music** | Have Spotify open. The first time, macOS asks whether "node" may control Spotify: click **OK** (or System Settings → Privacy & Security → Automation → node → Spotify). |
 | **Notes** | Point `vaults` in `crossbar.json` at your notes folder(s). |
 | **Network** | Docker Desktop (or any `docker` CLI) for the container list. |
