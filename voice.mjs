@@ -1,5 +1,5 @@
-// "Ask" by voice: glasses mic PCM → speech segmentation → local Whisper
-// (whisper.cpp's whisper-server, started on demand and kept loaded).
+// "Ask" by voice and live subtitles: glasses mic PCM → speech segmentation →
+// local Whisper (whisper.cpp's whisper-server, started on demand and kept loaded).
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 
@@ -14,8 +14,9 @@ const PROMPT = process.env.WHISPER_PROMPT || 'Voice notes for coding agents such
 
 // --- speech segmentation (energy VAD with an adaptive noise floor) --------------
 export class Segmenter {
-  constructor(onUtterance) {
+  constructor(onUtterance, { maxMs = 20_000 } = {}) {
     this.onUtterance = onUtterance;
+    this.maxMs = maxMs; // a phrase this long is cut even without a pause
     this.rest = Buffer.alloc(0);
     this.noise = 300;
     this.pre = [];
@@ -47,7 +48,7 @@ export class Segmenter {
     this.speech.push(Buffer.from(f));
     this.silent = loud ? 0 : this.silent + 1;
     const ms = this.speech.length * FRAME_MS;
-    if (this.silent * FRAME_MS >= 700 || ms >= 20_000) {
+    if (this.silent * FRAME_MS >= 700 || ms >= this.maxMs) {
       const pcm = Buffer.concat(this.speech);
       const voicedMs = ms - this.silent * FRAME_MS;
       this.speech = null;
@@ -90,17 +91,65 @@ function ensureWhisper() {
   return whisperReady;
 }
 
-export async function transcribe(pcm) {
+/** prompt: a hint for Whisper ('' for none: conversation, not agent names). */
+export async function transcribe(pcm, prompt = PROMPT) {
   await ensureWhisper();
   const form = new FormData();
   form.append('file', new Blob([wav(pcm)], { type: 'audio/wav' }), 'utterance.wav');
   form.append('response_format', 'json');
-  form.append('prompt', PROMPT);
+  if (prompt) form.append('prompt', prompt);
   try {
     const r = await fetch(`http://127.0.0.1:${WHISPER_PORT}/inference`, { method: 'POST', body: form, signal: AbortSignal.timeout(20_000) });
     return String((await r.json()).text || '').trim();
   } catch (e) {
     whisperReady = null; // a reused server may have died: respawn next time
     throw e;
+  }
+}
+
+// --- subtitles: rolling captions of the conversation around you ---------------------
+// While someone talks, the phrase so far is re-transcribed every everyMs, so words
+// show up as they're said (final: false); when the phrase ends (a pause, or maxMs
+// of talk) it's transcribed once more (final: true). One Whisper request at a
+// time: a finished phrase waits for the one in flight, partials are skipped while
+// busy. No speech for idleMs: onIdle (the bridge turns subtitles off).
+// "[BLANK_AUDIO]", "(wind)": Whisper's labels for what isn't speech
+export const caption = (text) => text.replace(/\[[^\]]*\]|\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+
+export class Captioner {
+  constructor(transcribe, emit, { everyMs = 1500, maxMs = 8000, idleMs = 5 * 60_000, onIdle = () => {} } = {}) {
+    this.transcribe = transcribe;
+    this.emit = emit;
+    this.phrase = 0; // which phrase a partial belongs to: a late one for an ended phrase is dropped
+    this.done = []; // ended phrases waiting for Whisper
+    this.busy = false;
+    this.heard = Date.now();
+    this.seg = new Segmenter((pcm) => { this.phrase++; this.done.push(pcm); this.next(); }, { maxMs });
+    this.ticker = setInterval(() => this.partial(), everyMs);
+    this.idler = setInterval(() => { if (Date.now() - this.heard > idleMs) onIdle(); }, Math.min(idleMs, 30_000));
+  }
+  push(chunk) {
+    this.seg.push(chunk);
+    if (this.seg.speech) this.heard = Date.now();
+  }
+  partial() {
+    if (this.busy || !this.seg.speech || this.seg.speech.length * FRAME_MS < 600) return;
+    const phrase = this.phrase;
+    this.run(Buffer.concat(this.seg.speech), (text) => { if (phrase === this.phrase && text) this.emit({ text, final: false }); });
+  }
+  next() {
+    if (this.busy || !this.done.length) return;
+    this.run(this.done.shift(), (text) => this.emit({ text, final: true })); // '' too: the partial goes
+  }
+  run(pcm, then) {
+    this.busy = true;
+    this.transcribe(pcm).then((text) => { if (!this.stopped) then(caption(text)); },
+      (e) => { if (!this.stopped) this.emit({ error: `speech: ${e.message}` }); })
+      .finally(() => { this.busy = false; if (!this.stopped) this.next(); });
+  }
+  stop() {
+    this.stopped = true;
+    clearInterval(this.ticker);
+    clearInterval(this.idler);
   }
 }

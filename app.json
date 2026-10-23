@@ -9,7 +9,7 @@
   "permissions": [
     {
       "name": "g2-microphone",
-      "desc": "\"Ask\" an agent by voice; speech is transcribed on your own Mac, never in the cloud."
+      "desc": "\"Ask\" an agent by voice, and live subtitles of the conversation around you; speech is transcribed on your own Mac, never in the cloud, and not saved."
     },
     {
       "name": "camera",

@@ -2,6 +2,10 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
+## Unreleased
+
+- **Subtitles:** live captions of the conversation around you, from the glasses mic, transcribed by Whisper on your Mac. They take the headlines' place on the top line (minimized: the last few lines, with "CC" in the corner); words appear while they're said and settle at each pause. Switch them in System → Subtitles; they turn off by themselves after 5 minutes without speech, and an Ask pauses them. Each phone's subtitles are its own, and nothing is saved.
+
 ## 1.0.10
 
 - **Glasses freezing:** when the Bluetooth link drops a command, the glasses no longer wait for it forever (frozen while the phone carries on). After 5 seconds without an answer the phone says "Glasses not responding · reconnect Bluetooth", and the app keeps retrying, redrawing the glasses fully once they answer again.

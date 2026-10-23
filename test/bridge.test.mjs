@@ -29,7 +29,7 @@ before(async () => {
     join(import.meta.dirname, 'bin', 'fakeagent')]);
   server = spawn(process.execPath, [join(ROOT, 'crossbar-server.mjs')], {
     env: { ...process.env, CROSSBAR_MODE: 'home', CROSSBAR_KEY: 'test-pairing-code', BIND: '127.0.0.1', CROSSBAR_PORT: String(PORT),
-      CROSSBAR_TMUX: TMUX, CROSSBAR_CONFIG: join(tmp, 'crossbar.json') },
+      CROSSBAR_TMUX: TMUX, CROSSBAR_CONFIG: join(tmp, 'crossbar.json'), WHISPER_MODEL: join(tmp, 'no-model.bin') }, // Whisper never starts: no speech is sent
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';
@@ -171,4 +171,23 @@ test('the bridge serves its files, and nothing that is a folder or outside dist'
   assert.equal(await get('/assets'), 404); // a folder
   assert.equal(await get('/nope.js'), 404);
   assert.equal(await get('/%2e%2e/package.json'), 404); // outside dist
+});
+
+test('subtitles: a switch in System, each phone its own', { skip, timeout: 15_000 }, async () => {
+  const a = client(), b = client();
+  await Promise.all([a.open, b.open]);
+  const subsItem = (m) => m.categories.find((c) => c.id === 'system')?.items[0];
+  a.send({ type: 'crossbar' });
+  const off = subsItem(await a.next((m) => m.type === 'crossbar' && m.categories));
+  assert.equal(off.id, 'sys:subs');
+  assert.deepEqual(off.actions.map((x) => x.id), ['on']);
+  a.send({ type: 'crossbar-act', item: 'sys:subs', action: 'on' });
+  await a.next((m) => m.type === 'subs' && m.on === true);
+  await a.next((m) => m.type === 'crossbar' && m.categories && subsItem(m).label === 'Subtitles On'); // (an earlier refresh may come first)
+  a.ws.send(Buffer.alloc(9600)); // a second of silence from the mic: nothing to caption
+  b.send({ type: 'crossbar' });
+  assert.equal(subsItem(await b.next((m) => m.type === 'crossbar' && m.categories)).label, 'Subtitles'); // b's are still off
+  a.send({ type: 'crossbar-act', item: 'sys:subs', action: 'off' });
+  await a.next((m) => m.type === 'subs' && m.on === false);
+  a.ws.close(); b.ws.close();
 });

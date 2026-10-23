@@ -91,6 +91,10 @@ const item = (): Item | undefined => items()[ii()];
 const say = (text: string, ms = 2500) => { toast = { text, until: Date.now() + ms }; render(); };
 const toastText = () => (toast.text && Date.now() < toast.until ? toast.text : '');
 const asking = () => !!ask && ['listening', 'transcribing', 'pending'].includes(ask.state);
+// Subtitles (switched in System): the Mac captions what the glasses mic hears.
+// lines: finished phrases, newest last; partial: the phrase still being said.
+const subs = { on: false, lines: [] as string[], partial: '', at: 0 };
+const micWanted = () => asking() || subs.on;
 // Sent / cancelled / failed screens close on their own; any tap closes them sooner.
 const dismissAsk = () => { ask = null; render(); };
 
@@ -277,8 +281,27 @@ function statusLine(): Line {
   const left = clock();
   const right = battery();
   const room = 548 - getTextWidth(left) - getTextWidth(SEP) - (right ? getTextWidth(right) + 24 : 0);
-  const title = paperTicker(room);
+  const title = subs.on ? captionLine(room) : paperTicker(room);
   return L(spread(title ? left + SEP + title : left, right, 548), 2);
+}
+
+// --- subtitles in the top line (and the minimized view) ---------------------------
+const SUBS_STALE_MS = 15_000; // a caption this old makes way for "Listening…"
+const captionText = () => [...subs.lines, subs.partial].filter(Boolean).join(' ');
+// The end of s that fits: in captions the newest words matter.
+function tailFit(s: string, px: number): string {
+  if (getTextWidth(s) <= px) return s;
+  const words = s.split(' ');
+  while (words.length > 1 && getTextWidth(`…${words.join(' ')}`) > px) words.shift();
+  return fit(`…${words.join(' ')}`, px);
+}
+function captionLine(room: number): string {
+  if (!subs.partial && Date.now() - subs.at > SUBS_STALE_MS) return 'Listening…';
+  return tailFit([subs.lines.at(-1), subs.partial].filter(Boolean).join(' '), room);
+}
+function captionRows(): string[] {
+  if (!subs.partial && Date.now() - subs.at > SUBS_STALE_MS) return ['Listening…'];
+  return wrap([captionText()], MINI_W).map((l) => l.trimStart()).slice(-MINI_ROWS);
 }
 
 // The newest AI papers on arXiv (cs.AI/LG/CL) after the clock. A title that
@@ -463,8 +486,12 @@ function miniTag(): Line {
     const agent = cats.find((c) => c.id === 'agents')?.items.find((it) => it.id === viewing);
     left = [agent?.label ?? cap(frame?.label ?? ''), agent?.meta?.split(' · ')[0]].filter(Boolean).join(' ');
   }
-  const num = papers.length ? `${ticker.i % papers.length + 1}/${papers.length}` : '';
+  const num = subs.on ? 'CC' : papers.length ? `${ticker.i % papers.length + 1}/${papers.length}` : '';
   const bottom = t ? fit(t, MINI_W) : spread(left, [num, battery()].filter(Boolean).join(' '), MINI_W);
+  if (subs.on) {
+    const rows = captionRows();
+    return L([...Array(MINI_ROWS - rows.length).fill(''), ...rows, bottom].join('\n'), t ? 4 : 3);
+  }
   if (!papers.length || !reading) {
     const title = papers.length ? miniTitle() : [];
     return L([...Array(MINI_ROWS - title.length).fill(''), ...title, bottom].join('\n'), t ? 4 : 3);
@@ -766,7 +793,19 @@ function connect() {
       // by the new state only: "sent"/"cancelled" linger 2.5 s, then the Crossbar returns
       const ms = msg.state === 'pending' ? msg.ms : ['listening', 'transcribing'].includes(msg.state) ? 60_000 : 2500;
       ask = { state: msg.state, agent: msg.agent ?? ask?.agent, text: msg.text ?? ask?.text, until: Date.now() + ms };
-      setMic(asking());
+      setMic(micWanted());
+    } else if (msg.type === 'subs') {
+      if (!msg.on) { subs.on = false; subs.lines = []; subs.partial = ''; if (msg.reason) say(msg.reason, 5000); }
+      else {
+        subs.on = true;
+        if (typeof msg.text === 'string') {
+          if (msg.final) { if (msg.text) subs.lines = [...subs.lines, msg.text].slice(-8); subs.partial = ''; }
+          else subs.partial = msg.text;
+          subs.at = Date.now();
+        }
+        if (msg.error) say(msg.error, 4000);
+      }
+      setMic(micWanted());
     } else return;
     render();
   };
@@ -774,7 +813,9 @@ function connect() {
     // Say exactly what failed: the installed app can't be inspected otherwise.
     offline = `Mac bridge offline (${opened ? 'dropped' : 'no connection'}, code ${e.code}) · ${wsUrl()} · retrying`;
     setupState(opened ? 'Connection dropped, retrying…' : `Can't reach ${wsUrl()}. Is the bridge running, and Tailscale on?`, 'bad');
-    if (asking()) { ask = null; setMic(false); }
+    if (asking()) ask = null;
+    subs.on = false; subs.lines = []; subs.partial = ''; // the Mac forgets them with the connection
+    setMic(micWanted());
     render();
     retry = setTimeout(connect, 2000);
   };
@@ -863,7 +904,7 @@ function onInput(type: OsEventTypeList | undefined) {
       if (reading) reader.off = Math.max(0, reader.off + 3 * d); // the last line stays, for context
       else if (papers.length) { ticker.i = (ticker.i + d + papers.length) % papers.length; ticker.at = Date.now(); }
       render();
-    } else if (type === OsEventTypeList.CLICK_EVENT && papers.length && !reading) {
+    } else if (type === OsEventTypeList.CLICK_EVENT && papers.length && !reading && !subs.on) { // captions take the reader's place
       reading = true; reader.off = 0; reader.paper = papers[ticker.i % papers.length];
       render();
     }
@@ -904,7 +945,7 @@ async function initGlasses() {
   page = 'term';
   b.onEvenHubEvent((ev) => {
     // 16 kHz s16le mono from the glasses mic, only while asking
-    if (ev.audioEvent) { if (asking() && ws?.readyState === WebSocket.OPEN) ws.send(new Uint8Array(ev.audioEvent.audioPcm)); return; }
+    if (ev.audioEvent) { if (micWanted() && ws?.readyState === WebSocket.OPEN) ws.send(new Uint8Array(ev.audioEvent.audioPcm)); return; }
     const e = ev.textEvent ?? ev.sysEvent;
     if (e) onInput(e.eventType);
   });

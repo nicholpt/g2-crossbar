@@ -24,10 +24,10 @@ const SYSTEM = [
   { type: 'application', name: 'Tailscale', requires: 'any', scope: 'optional', license: 'BSD-3-Clause',
     purl: 'pkg:github/tailscale/tailscale', url: 'https://tailscale.com', use: 'private network between the phone and the Mac (not in home mode)' },
   { type: 'application', name: 'whisper.cpp', requires: 'any', scope: 'optional', license: 'MIT',
-    purl: 'pkg:github/ggml-org/whisper.cpp', url: 'https://github.com/ggml-org/whisper.cpp', use: 'voice Ask: speech to text on the Mac (whisper-server)' },
+    purl: 'pkg:github/ggml-org/whisper.cpp', url: 'https://github.com/ggml-org/whisper.cpp', use: 'voice Ask and Subtitles: speech to text on the Mac (whisper-server)' },
   { type: 'machine-learning-model', name: 'ggml-small.en.bin', requires: 'this exact file (SHA-256)', scope: 'optional', license: 'MIT',
     purl: 'pkg:huggingface/ggerganov/whisper.cpp', url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin',
-    sha256: 'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d', use: 'the Whisper small.en model voice Ask transcribes with (466 MB, downloaded by bin/setup)' },
+    sha256: 'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d', use: 'the Whisper small.en model voice Ask and Subtitles transcribe with (466 MB, downloaded by bin/setup)' },
 ];
 
 const bom = JSON.parse(execFileSync('npm', ['sbom', '--sbom-format', 'cyclonedx', '--package-lock-only'], { cwd: ROOT, maxBuffer: 64 << 20 }).toString());
