@@ -2,7 +2,7 @@
 
 The Release workflow publishes the section for the tagged version as the release notes.
 
-## Unreleased
+## 1.1.0
 
 - **Subtitles:** live captions of the conversation around you, from the glasses mic, transcribed by Whisper on your Mac. They take the headlines' place on the top line (minimized: the last few lines, with "CC" in the corner); words appear while they're said and settle at each pause. Switch them in System → Subtitles; they turn off by themselves after 5 minutes without speech, and an Ask pauses them. Each phone's subtitles are its own, and nothing is saved.
 
