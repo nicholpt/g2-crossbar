@@ -23,7 +23,7 @@
   "dependencies": {
     "@evenrealities/even_hub_sdk": "^0.0.16",
     "@evenrealities/pretext": "^0.1.4",
-    "ws": "^8.22.0"
+    "ws": "^8.22.1"
   },
   "devDependencies": {
     "@evenrealities/evenhub-cli": "^0.1.14",
